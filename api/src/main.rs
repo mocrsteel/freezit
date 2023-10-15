@@ -1,5 +1,7 @@
+use api::connection::establish_connection;
+
 fn main() {
-    println!("Hello, world!");
+    let conn = establish_connection();
     let test = "Value";
     dbg!(test);
 }
