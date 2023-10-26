@@ -4,16 +4,23 @@
 // use diesel::prelude::*;
 // use diesel::result::Error;
 // use api::schema::storage::dsl::storage;
+use api::routes::{products, storage};
+use api::connection::{establish_connection, MIGRATIONS};
+
 use axum::{
     routing::get,
     response::Response,
     body::Body,
     http::{HeaderMap, Request},
-    Router
+    Router,
 };
+
+use diesel_migrations::MigrationHarness;
+
 // use hyper::{Body, HeaderMap, Request, Response};
+use std::net::SocketAddr;
 use std::time;
-use axum::http::HeaderValue;
+use tokio::signal;
 use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
@@ -29,8 +36,14 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let products_routes = Router::new()
+        .route("/:id", get(products::get_product));
+
+    let api_routes = Router::new()
+        .nest("/products", products_routes);
+
     let app = Router::new()
-        .route("/", get(|| async { "Hello World!" }))
+        .nest("/api", api_routes)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
@@ -64,11 +77,25 @@ async fn main() {
                     },
                 ),
         );
-    let addr = ([0, 0, 0, 0], 3000).into();
-    let server = axum::Server::bind(&addr);
+
+    // Run pending migrations prior to server startup.
+    let conn = &mut establish_connection();
+    conn.run_pending_migrations(MIGRATIONS)
+        .unwrap_or_else(|_| {
+            tracing::error!(target: "database_startup", "Failed to run pending migrations");
+            panic!("Failed migrations.")
+        });
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {} at port {}", addr.ip(), addr.port());
 
-    server.serve(app.into_make_service()).await.unwrap();
+    hyper::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap_or_else(|err| {
+            tracing::error!(target: "app_main", "Failed to build server: {}", err);
+        });
     // Code references for database interactions with Diesel, delete later.
 
     // use api::schema::products::dsl::*;
@@ -132,4 +159,36 @@ async fn main() {
     // } else {
     //     println!("Could not find the product in the database.");
     // }
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .unwrap_or_else(|error| {
+                tracing::error!(target: "app_main", "Failed to install Ctrl+C handler: {}", error);
+                panic!("Failed shutdown setup")
+            });
+    };
+
+    #[cfg(unix)]
+        let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .unwrap_or_else(|err| {
+                tracing::error!(target: "shutdown_setup", "Failed to install signal handler: {}", err);
+                panic!("Failed shutdown setup.")
+            })
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {}
+    }
+
+    tracing::info!(target: "shutdown_event", "signal received starting graceful shutdown.");
 }
