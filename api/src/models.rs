@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use crate::schema::{products, storage};
 
 // Query | Select
-#[derive(Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable)]
 #[diesel(table_name = products)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Product {
@@ -13,7 +13,8 @@ pub struct Product {
     pub expiration_months: i32,
 }
 
-#[derive(Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable, Associations)]
+#[diesel(belongs_to(Product))]
 #[diesel(table_name = storage)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Storage {
@@ -26,14 +27,14 @@ pub struct Storage {
 }
 
 // Insert
-#[derive(Insertable)]
+#[derive(serde::Deserialize, Insertable)]
 #[diesel(table_name = products)]
 pub struct NewProduct<'a> {
     pub name: &'a str,
     pub expiration_months: Option<i32>,
 }
 
-#[derive(Insertable)]
+#[derive(serde::Deserialize, Insertable)]
 #[diesel(table_name = storage)]
 pub struct NewStorageItem {
     pub product_id: i32,
