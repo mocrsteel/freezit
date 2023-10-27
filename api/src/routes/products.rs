@@ -1,6 +1,6 @@
 use axum::{
     extract::Path,
-    response::Json,
+    response::{Json, },
     http::StatusCode,
 };
 use diesel::QueryDsl;
