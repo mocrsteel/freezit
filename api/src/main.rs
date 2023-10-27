@@ -1,30 +1,11 @@
-// use chrono::prelude::*;
-// use api::connection::establish_connection;
-// use api::models::{NewStorageItem, Product, Storage};
-// use diesel::prelude::*;
-// use diesel::result::Error;
-// use api::schema::storage::dsl::storage;
-use api::routes::{products, storage};
-use api::connection::{establish_connection, MIGRATIONS};
-
-use axum::{
-    routing::get,
-    response::Response,
-    body::Body,
-    http::{HeaderMap, Request},
-    Router,
-};
+use std::net::SocketAddr;
 
 use diesel_migrations::MigrationHarness;
-
-// use hyper::{Body, HeaderMap, Request, Response};
-use std::net::SocketAddr;
-use std::time;
 use tokio::signal;
-use tower_http::classify::ServerErrorsFailureClass;
-use tower_http::trace::TraceLayer;
-use tracing::Span;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+use api::app;
+use api::connection::{establish_connection, MIGRATIONS};
 
 #[tokio::main]
 async fn main() {
@@ -36,47 +17,6 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let products_routes = Router::new()
-        .route("/:id", get(products::get_product));
-
-    let api_routes = Router::new()
-        .nest("/products", products_routes);
-
-    let app = Router::new()
-        .nest("/api", api_routes)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<Body>| {
-                    tracing::debug_span!(
-                        "http-request",
-                        method=?request.method(),
-                        uri=?request.uri().path(),
-                        version=?request.version(),
-                        user_agent=?request.headers().get("user-agent")
-                    )
-                })
-                .on_request(|_request: &Request<Body>, _span: &Span| {
-                    tracing::debug!("Request")
-                    // tracing::debug_span!("started", method=request.method(), uri=request.uri().path())
-                })
-                .on_response(
-                    |response: &Response, latency: time::Duration, _span: &Span| {
-                        tracing::debug!("Response Status='{}' in {:?}", response.status(),latency)
-                    },
-                )
-                .on_eos(
-                    |_trailers: Option<&HeaderMap>,
-                     stream_duration: time::Duration,
-                     _span: &Span| {
-                        tracing::debug!("stream closed after {:?}", stream_duration)
-                    },
-                )
-                .on_failure(
-                    |_error: ServerErrorsFailureClass, _latency: time::Duration, _span: &Span| {
-                        tracing::debug!("Something went wrong")
-                    },
-                ),
-        );
 
     // Run pending migrations prior to server startup.
     let conn = &mut establish_connection();
@@ -90,7 +30,7 @@ async fn main() {
     tracing::debug!("listening on {} at port {}", addr.ip(), addr.port());
 
     hyper::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app().await.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap_or_else(|err| {
