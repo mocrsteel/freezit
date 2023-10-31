@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use diesel::prelude::*;
 use typeshare::typeshare;
 
-use crate::schema::{products, storage};
+use crate::schema::{products, freezers, drawers, storage};
 
 // Query | Select
 #[typeshare]
@@ -14,6 +14,27 @@ pub struct Product {
     pub product_id: i32,
     pub name: String,
     pub expiration_months: i32,
+}
+
+#[typeshare]
+#[derive(serde::Serialize, Queryable, Selectable)]
+#[diesel(table_name = freezers)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
+pub struct Freezer {
+    pub freezer_id: i32,
+    pub name: String,
+}
+
+#[typeshare]
+#[derive(serde::Serialize, Queryable, Selectable)]
+#[diesel(table_name = drawers)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
+pub struct Drawer {
+    pub drawer_id: i32,
+    pub name: String,
+    pub freezer_id: i32,
 }
 
 #[typeshare]
@@ -29,6 +50,7 @@ pub struct Storage {
     pub date_in: NaiveDate,
     pub date_out: Option<NaiveDate>,
     pub available: bool,
+    pub drawer_id: i32,
 }
 
 // Insert
@@ -50,4 +72,21 @@ pub struct NewStorageItem {
     pub weight_grams: f32,
     pub date_in: NaiveDate,
     pub available: bool,
+}
+
+#[typeshare]
+#[derive(serde::Deserialize, Insertable)]
+#[diesel(table_name = freezers)]
+#[serde(rename_all = "camelCase")]
+pub struct NewFreezer {
+    pub name: String,
+}
+
+#[typeshare]
+#[derive(serde::Deserialize, Insertable)]
+#[diesel(table_name = drawers)]
+#[serde(rename_all = "camelCase")]
+pub struct NewDrawer {
+    pub name: String,
+    pub freezer_id: i32,
 }
