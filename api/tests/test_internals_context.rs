@@ -40,6 +40,14 @@ mod tables {
             .execute(conn)
             .unwrap();
 
+        diesel::sql_query("SELECT * FROM freezers;")
+            .execute(conn)
+            .unwrap();
+
+        diesel::sql_query("SELECT * FROM drawers;")
+            .execute(conn)
+            .unwrap();
+
         let false_table_returns_error = diesel::sql_query("SELECT * FROM does_not_exist")
             .execute(conn)
             .is_err();
