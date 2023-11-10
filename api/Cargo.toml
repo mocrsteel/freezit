@@ -8,7 +8,7 @@ repository = "https://github.com/mocrsteel/freezit"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { version = "0.6.20", features = ["tower-log", "tracing"] }
+axum = { version = "0.6.20", features = ["tower-log", "tracing", "tokio"] }
 chrono = { version = "0.4.31", features=["serde"] }
 diesel = { version = "2.1.3", features = ["postgres", "chrono"] }
 diesel_migrations = { version = "2.1.0", features = ["postgres"] }
@@ -24,4 +24,7 @@ tower-http = { version = "0.4.4", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 typeshare = "1.0.1"
+
+[dev-dependencies]
+tower = { version = "0.4.13", features = ["util"] }
 
