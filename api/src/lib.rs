@@ -23,9 +23,11 @@ use crate::routes::{root, products};
 pub async fn app() -> Router {
 
     let products_subroutes = Router::new()
-        .route("/:id", get(products::get_product));
+        .route("/id=:id", get(products::get_product_by_id))
+        .route("/name=:name", get(products::get_product_by_name));
 
     let api_subroutes = Router::new()
+        .route("/", get(|| async { "API active" }))
         .route("/info", get(root::info))
         .route("/authors", get(root::authors))
         .route("/version", get(root::version))
