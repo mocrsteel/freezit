@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::sync::atomic::Ordering;
 
 use diesel::prelude::*;
@@ -8,9 +10,9 @@ use chrono::prelude::*;
 use dotenvy::dotenv;
 use log::{debug, error, info};
 
-use api::models::{NewProduct, NewStorageItem, Product, Storage};
+use api::models::{NewFreezer, NewProduct, NewStorageItem, NewDrawer, Drawer, Freezer, Product, Storage};
 
-use super::DB_COUNT;
+use super::{DB_COUNT, db_data};
 
 static LOG_TARGET: &str = "integration_tests > Context";
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
@@ -20,6 +22,7 @@ pub struct Context {
     base_url: String,
     db_name: String,
 }
+
 impl Context {
     pub fn new(ctx: &str) -> Context {
         info!(target: LOG_TARGET, "Setting up context for {ctx}");
@@ -30,9 +33,9 @@ impl Context {
 
         let db_num = DB_COUNT.fetch_add(1, Ordering::SeqCst);
         let db_name = format!("db_{}_{}", db_num, ctx);
-        let postgres_url = format!("{}/postgres", base_url);
+        let postgres_url = format!("{}/postgres?connect_timeout=5", base_url);
 
-        debug!(target:"interation_tests > Context", "Creating database {} at postgres instance {}", db_name, postgres_url);
+        debug!(target:"interaction_tests > Context", "Creating database {} at postgres instance {}", db_name, postgres_url);
         let conn = &mut PgConnection::establish(&postgres_url)
             .expect("Cannot connect to postgres database.");
 
@@ -71,67 +74,76 @@ impl Context {
         Self { base_url, db_name }
     }
     pub fn establish_connection(&mut self) -> PgConnection {
-        PgConnection::establish(format!("{}/{}", self.base_url, self.db_name).as_str())
+        PgConnection::establish(format!("{}/{}?connect_timeout=5", self.base_url, self.db_name).as_str())
             .unwrap_or_else(|_| panic!("Could not connect to database {}", self.db_name))
     }
-    fn feed_database(conn: &mut PgConnection, db_name: &str) {
-        let test_storage: [NewStorageItem; 5] = [
-            NewStorageItem {
-                product_id: 1,
-                weight_grams: 434.,
-                date_in: NaiveDate::from_ymd_opt(2023, 10, 1).unwrap(),
-                available: true,
-            },
-            NewStorageItem {
-                product_id: 2,
-                weight_grams: 734.,
-                date_in: Local::now().date_naive(),
-                available: true,
-            },
-            NewStorageItem {
-                product_id: 3,
-                weight_grams: 234.,
-                date_in: Local::now().date_naive(),
-                available: true,
-            },
-            NewStorageItem {
-                product_id: 1,
-                weight_grams: 334.,
-                date_in: Local::now().date_naive(),
-                available: true,
-            },
-            NewStorageItem {
-                product_id: 4,
-                weight_grams: 554.,
-                date_in: Local::now().date_naive(),
-                available: true,
-            },
-        ];
-        let test_products: [NewProduct; 4] = [
-            NewProduct {
-                name: "Brocoli",
-                expiration_months: Some(12),
-            },
-            NewProduct {
-                name: "Asperges",
-                expiration_months: Some(6),
-            },
-            NewProduct {
-                name: "Beans",
-                expiration_months: Some(16),
-            },
-            NewProduct {
-                name: "Minced pork & beef",
-                expiration_months: Some(4),
-            },
-        ];
+    pub fn database_url(&self) -> String {
+        format!("{}/{}?connect_timeout=5", self.base_url, self.db_name)
+    }
 
-        use api::schema::products::dsl::*;
-        use api::schema::storage::dsl::*;
+    fn feed_database(conn: &mut PgConnection, db_name: &str) {
+        // Data preparation prior to feeding it to the context database.
+        let freezers_feed: Vec<NewFreezer> = db_data::FREEZERS
+            .into_iter()
+            .map(|(_id, name)| {
+                NewFreezer {
+                    name,
+                }
+            }).collect();
+        let drawers_feed: Vec<NewDrawer> = db_data::DRAWERS
+            .into_iter()
+            .map(|(_id, name, freezer_id)| {
+                NewDrawer {
+                    name,
+                    freezer_id,
+                }
+            }).collect();
+        let product_feed: Vec<NewProduct> = db_data::PRODUCTS
+            .into_iter()
+            .map(|(_id, name, expiration_months)| {
+                NewProduct {
+                    name,
+                    expiration_months: Some(expiration_months),
+                }
+            }).collect();
+        let storage_feed: Vec<NewStorageItem> = db_data::STORAGE
+            .into_iter()
+            .map(|(_id, prod_id, wt_grams, dt_in, av, draw_id)| {
+                NewStorageItem {
+                    product_id: prod_id,
+                    weight_grams: wt_grams,
+                    date_in: NaiveDate::parse_from_str(dt_in, "%Y-%m-%d").unwrap(),
+                    available: av,
+                    drawer_id: draw_id,
+                }
+            }).collect();
+
+        use api::schema::drawers::dsl as draw;
+        use api::schema::freezers::dsl as freez;
+        use api::schema::products::dsl as prod;
+        use api::schema::storage::dsl as stor;
 
         // let conn = &mut self.establish_connection();
-        diesel::insert_into(products)
-            .values(test_products)
+        diesel::insert_into(freez::freezers)
+            .values(freezers_feed)
+            .returning(Freezer::as_returning())
+            .get_result(conn)
+            .unwrap_or_else(|err| {
+                error!("Error loading freezers in '{}': {}", db_name, err);
+                panic!("Error loading freezers into database {}", db_name)
+            });
+
+        diesel::insert_into(draw::drawers)
+            .values(drawers_feed)
+            .returning(Drawer::as_returning())
+            .get_result(conn)
+            .unwrap_or_else(|err| {
+                error!("Error loading drawers in '{}': {}", db_name, err);
+                panic!("Error loading drawers into database {}", db_name)
+            });
+
+        diesel::insert_into(prod::products)
+            .values(product_feed)
             .returning(Product::as_returning())
             .get_results(conn)
             .unwrap_or_else(|err| {
@@ -139,8 +151,8 @@ impl Context {
                 panic!("Error loading products into database {}", db_name)
             });
 
-        diesel::insert_into(storage)
-            .values(test_storage)
+        diesel::insert_into(stor::storage)
+            .values(storage_feed)
             .returning(Storage::as_returning())
             .get_results(conn)
             .unwrap_or_else(|err| {
@@ -149,11 +161,11 @@ impl Context {
             });
     }
 }
+
 impl Drop for Context {
     fn drop(&mut self) {
         debug!(target: LOG_TARGET, "Preparing to drop database {} at postgres instance {}", self.db_name, self.base_url);
 
-        // let postgres_url = format!("{}/postgres", self.base_url);
         let conn = &mut PgConnection::establish(format!("{}/postgres", self.base_url).as_str())
             .expect("Could not connect to the postgres database.");
 

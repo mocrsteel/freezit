@@ -1,11 +1,11 @@
-
+#[warn(missing_docs)]
 pub mod connection;
 pub mod models;
 pub mod routes;
 pub mod schema;
 pub mod error;
 
-use std::time;
+use std::time::Duration;
 
 use axum::{
     routing::get,
@@ -15,16 +15,30 @@ use axum::{
     Router,
 };
 use tower_http::classify::ServerErrorsFailureClass;
-use tower_http::trace::TraceLayer;
+use tower_http::{
+    timeout::TimeoutLayer,
+    trace::TraceLayer
+};
 use tracing::Span;
 
 use crate::routes::{root, products};
 
-pub async fn app() -> Router {
+/// Contains application state variables.
+#[derive(Clone)]
+pub struct AppState {
+    db_url: Option<String>,
+}
+
+/// App factory with possibility to define non-.env database url.
+pub async fn app(db_url: Option<String>) -> Router {
+    let state = AppState {
+        db_url,
+    };
 
     let products_subroutes = Router::new()
         .route("/id=:id", get(products::get_product_by_id))
-        .route("/name=:name", get(products::get_product_by_name));
+        .route("/name=:name", get(products::get_product_by_name))
+        .route("/expiration=:expiration", get(products::get_products_by_expiration));
 
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))
@@ -35,6 +49,8 @@ pub async fn app() -> Router {
 
     Router::new()
         .nest("/api", api_subroutes)
+        .with_state(state)
+        .layer(TimeoutLayer::new(Duration::from_secs(15)))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
@@ -51,19 +67,19 @@ pub async fn app() -> Router {
                     // tracing::debug_span!("started", method=request.method(), uri=request.uri().path())
                 })
                 .on_response(
-                    |response: &Response, latency: time::Duration, _span: &Span| {
+                    |response: &Response, latency: Duration, _span: &Span| {
                         tracing::debug!("Response Status='{}' in {:?}", response.status(),latency)
                     },
                 )
                 .on_eos(
                     |_trailers: Option<&HeaderMap>,
-                     stream_duration: time::Duration,
+                     stream_duration: Duration,
                      _span: &Span| {
                         tracing::debug!("stream closed after {:?}", stream_duration)
                     },
                 )
                 .on_failure(
-                    |_error: ServerErrorsFailureClass, _latency: time::Duration, _span: &Span| {
+                    |_error: ServerErrorsFailureClass, _latency: Duration, _span: &Span| {
                         tracing::debug!("Something went wrong")
                     },
                 ),

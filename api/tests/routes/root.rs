@@ -51,7 +51,7 @@ use tower::util::ServiceExt;
 
 #[tokio::test]
 async fn api_root_response() {
-    let app = app().await;
+    let app = app(None).await;
     let expected_body = b"API active";
 
     let response = app

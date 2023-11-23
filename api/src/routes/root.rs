@@ -67,7 +67,7 @@ mod tests {
 
     #[tokio::test]
     async fn api_info_response() {
-        let app = app().await;
+        let app = app(None).await;
         let api_version = env!("CARGO_PKG_VERSION");
         let expected_body = Bytes::from(format!("Welcome to api v{}", api_version));
         let response = app
@@ -83,7 +83,7 @@ mod tests {
 
     #[tokio::test]
     async fn api_version_response() {
-        let app = app().await;
+        let app = app(None).await;
 
         let version_major = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
         let version_minor = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
