@@ -114,6 +114,8 @@ VALUES
 "
 $PSQL "UPDATE storage SET available=false WHERE storage_id = 18;"
 $PSQL "UPDATE storage SET available=false, date_out='2023-11-10' WHERE storage_id = 23;"
+
+# shellcheck disable=SC2005
 echo "$($PSQL "SELECT * FROM storage
   LEFT JOIN products USING(product_id)
   LEFT JOIN drawers USING(drawer_id)

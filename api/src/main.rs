@@ -19,7 +19,7 @@ async fn main() {
 
 
     // Run pending migrations prior to server startup.
-    let conn = &mut establish_connection();
+    let conn = &mut establish_connection(None);
     conn.run_pending_migrations(MIGRATIONS)
         .unwrap_or_else(|_| {
             tracing::error!(target: "database_startup", "Failed to run pending migrations");
@@ -30,7 +30,7 @@ async fn main() {
     tracing::debug!("listening on {} at port {}", addr.ip(), addr.port());
 
     hyper::Server::bind(&addr)
-        .serve(app().await.into_make_service())
+        .serve(app(None).await.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap_or_else(|err| {
