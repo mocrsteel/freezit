@@ -9,7 +9,7 @@ use crate::schema::{products, freezers, drawers, storage};
 pub type ProductTuple = (i32, &'static str, i32);
 
 #[typeshare]
-#[derive(serde::Serialize, Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable, AsChangeset)]
 #[diesel(table_name = products)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +42,7 @@ impl Product {
 pub type FreezerTuple = (i32, &'static str);
 
 #[typeshare]
-#[derive(serde::Serialize, Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable, AsChangeset)]
 #[diesel(table_name = freezers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -72,7 +72,7 @@ impl Freezer {
 pub type DrawerTuple = (i32, &'static str, i32);
 
 #[typeshare]
-#[derive(serde::Serialize, Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable, AsChangeset)]
 #[diesel(table_name = drawers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -105,7 +105,7 @@ impl Drawer {
 pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32);
 
 #[typeshare]
-#[derive(serde::Serialize, Queryable, Selectable, Associations)]
+#[derive(serde::Serialize, Queryable, Selectable, Associations, AsChangeset)]
 #[diesel(table_name = storage)]
 #[diesel(belongs_to(Product))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
