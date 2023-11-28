@@ -36,9 +36,9 @@ pub async fn app(db_url: Option<String>) -> Router {
     };
 
     let products_subroutes = Router::new()
-        .route("/id=:id", get(products::get_product_by_id))
-        .route("/name=:name", get(products::get_product_by_name))
-        .route("/expiration=:expiration", get(products::get_products_by_expiration));
+        .route("?id=:id", get(products::get_product_by_id))
+        .route("?name=:name", get(products::get_product_by_name))
+        .route("?expiration=:expiration", get(products::get_products_by_expiration));
 
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))

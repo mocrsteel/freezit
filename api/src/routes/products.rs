@@ -8,7 +8,7 @@ use diesel::prelude::*;
 
 use crate::AppState;
 use crate::error::internal_error;
-use crate::models::Product;
+use crate::models::{Product, NewProduct};
 use crate::connection::establish_connection;
 
 pub async fn get_product_by_id(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<Product>, (StatusCode, String)> {
@@ -49,7 +49,11 @@ pub async fn get_products_by_expiration(State(state): State<AppState>, Path(quer
     Ok(Json(res))
 }
 
-async fn update_product() {
+async fn create_product<'a>(State(state): State<AppState>, new_product: Json<NewProduct<'a>>) -> Result<Product, (StatusCode, String)> {
+    
+}
+
+async fn update_product(State(state): State<AppState>, update_product: Json<Product>) -> Result<Product, (StatusCode, String)> {
 
 }
 
