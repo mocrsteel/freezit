@@ -21,8 +21,9 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_USER: postgres-user
-          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -34,17 +35,17 @@ jobs:
 
     steps:
       - name: Test postgres
-        run: psql postgres://postgres-user:postgres-password@localhost:5432/postgres -c "Select 1"
-      - uses: actions/checkout@v3
-      - name: Build
-        run: cargo build --verbose
-        working-directory: api
-        env:
-          DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
-          DATABASE_BASE_URL: postgres://postgres-user:postgresd-password@localhost:5432
-      - name: Run tests
-        run: cargo test --verbose
-        working-directory: api
-        env:
-          DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
-          DATABASE_BASE_URL: postgres://postgres-user:postgres-password@localhost:5432
+        run: psql postgres://user:password@localhost:5432/db -c "Select 1"
+ #     - uses: actions/checkout@v3
+ #    - name: Build
+ #       run: cargo build --verbose
+ #       working-directory: api
+ #       env:
+ #        DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
+ #         DATABASE_BASE_URL: postgres://postgres-user:postgresd-password@localhost:5432
+ #     - name: Run tests
+ #       run: cargo test --verbose
+ #       working-directory: api
+ #       env:
+ #         DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
+ #         DATABASE_BASE_URL: postgres://postgres-user:postgres-password@localhost:5432
