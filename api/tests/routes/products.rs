@@ -2,13 +2,14 @@ use crate::common::db_data::PRODUCTS;
 use crate::common::db::Context;
 use api::app;
 
+use log::info;
 use axum::{
     body::Body,
     http::Request,
 };
 use hyper::StatusCode;
 use serde_json::{json, Value};
-use tower::util::ServiceExt;
+use tower::{Service, ServiceExt};
 use api::models::{NewProduct, Product, ProductTuple};
 
 static MOD: &str = "router_products";
@@ -21,7 +22,7 @@ async fn get_product_by_id() {
 
     let response = app
         .oneshot(Request::builder()
-            .uri(format!("/api/products?id={}", query_id))
+            .uri(format!("/api/products/id={}", query_id))
             .body(Body::empty()).unwrap()
         )
         .await
@@ -31,7 +32,7 @@ async fn get_product_by_id() {
 
     let product_vec: Vec<ProductTuple> = PRODUCTS
         .into_iter()
-        .filter(|(id, name, exp)| {
+        .filter(|(id, _name, _exp)| {
             id.eq(&query_id)
         })
         .collect();
@@ -51,7 +52,7 @@ async fn get_product_by_name() {
     let query_name = "Brocoli";
     let response = app
         .oneshot(Request::builder()
-            .uri(format!("/api/products?name={}", query_name))
+            .uri(format!("/api/products/name={}", query_name))
             .body(Body::empty()).unwrap()
         )
         .await
@@ -73,6 +74,28 @@ async fn get_product_by_name() {
 }
 
 #[tokio::test]
+async fn get_all_products() {
+    let ctx = Context::new(MOD);
+    let app = app(Some(ctx.database_url())).await;
+    let expected_response = Product::from_vec(PRODUCTS.to_vec());
+    let response = app.oneshot(
+            Request::builder()
+                .uri("/api/products")
+                .method("GET")
+                .body(Body::empty())
+                .unwrap()
+    ).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let products: Vec<Product> = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(products.len(), PRODUCTS.len());
+    assert_eq!(products, expected_response);
+}
+
+#[tokio::test]
 async fn get_products_by_expiration() {
     let ctx = Context::new(MOD);
     let app = app(Some(ctx.database_url())).await;
@@ -80,7 +103,7 @@ async fn get_products_by_expiration() {
 
     let response = app
         .oneshot(Request::builder()
-            .uri(format!("/api/products?expiration={}", query_expiration))
+            .uri(format!("/api/products/expiration={}", query_expiration))
             .body(Body::empty()).unwrap())
         .await
         .unwrap();
@@ -101,28 +124,53 @@ async fn get_products_by_expiration() {
 }
 
 #[tokio::test]
-async fn create_product() {
+async fn create_product_simple_test() {
     let ctx = Context::new(MOD);
     let app = app(Some(ctx.database_url())).await;
     let new_product = NewProduct {
-        name: "New Produce",
+        name: String::from("New Produce"),
         expiration_months: Some(24),
     };
-    let result = app
-        .oneshot(Request::builder()
-            .uri("/api/products/create")
-            .method("POST")
-            .body(Body::from(json!(new_product)))
-            .unwrap()
-        )
+    info!(target: "create_product", "{:?}", new_product);
+    let new_product_json = serde_json::to_string(&new_product).unwrap();
+    let request = app.oneshot(Request::builder()
+        .uri("/api/products/create")
+        .method("POST")
+        .header("Content-Type", "application/json")
+        .body(Body::from(new_product_json))
+        .unwrap()).await.unwrap();
+
+    assert_eq!(request.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn create_product() {
+    let ctx = Context::new(MOD);
+    let mut app = app(Some(ctx.database_url())).await;
+    let new_product = NewProduct {
+        name: String::from("New Produce"),
+        expiration_months: Some(24),
+    };
+    info!(target: "create_product", "{:?}", new_product);
+    let request = Request::builder()
+        .uri("/api/products/create")
+        .method("POST")
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&new_product).unwrap()))
+        .unwrap();
+
+    let result = ServiceExt::<Request<Body>>::ready(&mut app)
+        .await
+        .unwrap()
+        .call(request)
         .await
         .unwrap();
 
-    assert!(result.status(), StatusCode::OK);
+    info!(target: "create_product", "{:?}",result.status());
 
     let get_product = app
         .oneshot(Request::builder()
-            .uri(format!("/api/products?name={}", new_product.name))
+            .uri(format!("/api/products/name={}", new_product.name.replace(' ', "%20")))
             .body(Body::empty())
             .unwrap()
         )
@@ -131,6 +179,7 @@ async fn create_product() {
 
     let body = hyper::body::to_bytes(get_product.into_body()).await.unwrap();
     let response_product: Product = serde_json::from_slice(&body).unwrap();
+    info!(target: "response_product", "{:?}", response_product);
 
     assert_eq!(response_product.name, new_product.name);
 }
@@ -140,7 +189,7 @@ async fn cannot_create_existing_product() {
     let ctx = Context::new(MOD);
     let app = app(Some(ctx.database_url())).await;
     let new_product = NewProduct {
-        name: "Brocoli",
+        name: String::from("Brocoli"),
         expiration_months: Some(24),
     };
 
@@ -148,28 +197,31 @@ async fn cannot_create_existing_product() {
         .oneshot(Request::builder()
             .uri("/api/products/create")
             .method("POST")
-            .body(Body::from(json!(new_product)))
+            .header("Content-Type", "application/json")
+            .body(Body::from(serde_json::to_string(&new_product).unwrap().replace(' ', "%20")))
             .unwrap()
         )
         .await
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    assert_eq!(response.status().as_str(), "This product already exists.");
 }
 
 #[tokio::test]
 async fn update_product() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let mut app = app(Some(ctx.database_url())).await;
     let product_name = "Brocoli";
 
-    let get_response = app
-        .oneshot(Request::builder()
-            .uri(format!("/api/products?name={}", product_name))
-            .body(Body::empty())
-            .unwrap()
-        )
+    let request = Request::builder()
+        .uri(format!("/api/products/name={}", product_name.replace(' ', "%20")))
+        .body(Body::empty())
+        .unwrap();
+
+    let get_response = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(request)
         .await
         .unwrap();
 
@@ -177,21 +229,25 @@ async fn update_product() {
     let mut product: Product = serde_json::from_slice(&body).unwrap();
     product.name = String::from("Geen Brocoli");
 
-    let update_response = app
-        .oneshot(Request::builder()
-            .uri("/api/products")
-            .method("UPDATE")
-            .body(Body::from(json!(product)))
-            .unwrap()
-        )
+    let request = Request::builder()
+        .uri("/api/products")
+        .method("PATCH")
+        .header("Content-Type","application/json")
+        .body(Body::from(serde_json::to_string(&product).unwrap()))
+        .unwrap();
+
+    let update_response = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(request)
         .await
         .unwrap();
 
     assert_eq!(update_response.status(), StatusCode::OK);
 
     let check_get_response = app
-        .onshot(Request::builder()
-            .uri(format!("/api/products?name={}", product.name))
+        .oneshot(Request::builder()
+            .uri(format!("/api/products/name={}", product.name.replace(' ', "%20")))
             .body(Body::empty())
             .unwrap()
         )
@@ -204,68 +260,110 @@ async fn update_product() {
 #[tokio::test]
 async fn cannot_change_product_name_to_existing() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
-    let product_name = "Groentensoep";
+    let mut app = app(Some(ctx.database_url())).await;
+    let product_name = PRODUCTS[1].1;
+    let other_product_name = PRODUCTS[3].1;
 
-    let mut product: Product = serde_json::from_slice(
-        hyper::body::to_bytes(
-            app.oneshot(Request::builder()
-                .uri(format!("/api/products?name={}", product_name))
-                .body(Body::empty())
-                .unwrap()
-            )
-                .await
-                .unwrap()
-                .into_body()
-        ).unwrap()
-    ).await.unwrap();
+    let product_request = Request::builder()
+        .uri(format!("/api/products/name={}", product_name))
+        .body(Body::empty())
+        .unwrap();
+
+    let request_res = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(product_request)
+        .await
+        .unwrap();
+
+    let body = hyper::body::to_bytes(request_res.into_body()).await.unwrap();
+    let mut product: Product = serde_json::from_slice(&body).unwrap();
 
     // just a check
     assert_eq!(product.name, String::from(product_name));
 
-    product.name = String::from("Brocoli");
+    product.name = String::from(other_product_name);
 
-    let response = app.oneshot(
-        Request::builder()
-            .uri("/api/products")
-            .methode("UPDATE")
-            .body(Body::from(json!(product)))
-            .unwrap()
-    )
+    dbg!(&product);
+
+    let update_product = serde_json::ser::to_string(&product).unwrap();
+
+    dbg!(&update_product);
+
+    let request = Request::builder()
+        .uri("/api/products")
+        .method("PATCH")
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::ser::to_string(&product).unwrap()))
+        .unwrap();
+
+    let response = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(request)
         .await
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    assert_eq!(response.status().as_str(), "This project already exists.")
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+
+    assert_eq!(&body[..], b"duplicate key value violates unique constraint \"products_name_key\"");
 }
 
 #[tokio::test]
 async fn delete_product() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let mut app = app(Some(ctx.database_url())).await;
     let id = 1;
 
-    let response = app.oneshot(
-        Request::builder()
-            .uri(format!("/api/products?id={}", id))
-            .method("DELETE")
-            .body(Body::empty())
-            .unwrap()
-    )
+    let delete_request = Request::builder()
+        .uri(format!("/api/products/id={}", id))
+        .method("DELETE")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(delete_request)
         .await
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let result_query = app.oneshot(
-        Request::builer()
-            .uri(format!("/api/products?id={}", id))
-            .body(Body::empty())
-            .unwrap()
-    )
+    let get_request = Request::builder()
+        .uri(format!("/api/products/id={}", id))
+        .body(Body::empty())
+        .unwrap();
+
+    let result_query = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(get_request)
         .await
         .unwrap();
 
-    assert_eq!(result_query.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    assert_eq!(result_query.status().as_str(), "Could not find the requested product.");
+    assert_eq!(result_query.status(), StatusCode::INTERNAL_SERVER_ERROR, "{:?}", result_query.status().canonical_reason());
+}
+
+#[tokio::test]
+async fn delete_nonexistent_product_returns_error() {
+    let ctx = Context::new(MOD);
+    let app = app(Some(ctx.database_url())).await;
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/products/id=100")
+                .method("DELETE")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+    assert_eq!(&res.status(), &StatusCode::INTERNAL_SERVER_ERROR);
+
+    let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+    
+    assert_eq!(&body_bytes[..], b"Record not found");
 }

@@ -30,11 +30,11 @@ diesel::table! {
     storage (storage_id) {
         storage_id -> Int4,
         product_id -> Int4,
+        drawer_id -> Int4,
         weight_grams -> Float4,
         date_in -> Date,
         date_out -> Nullable<Date>,
         available -> Bool,
-        drawer_id -> Int4,
     }
 }
 

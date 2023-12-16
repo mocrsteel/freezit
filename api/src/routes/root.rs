@@ -1,3 +1,9 @@
+//! API root endpoint. Contains basic information of the API, such as version, author etc.
+//!
+//! # Use
+//!
+//! Can be used to display version and package information in an about page on the frontend.
+
 use crate::error::internal_error;
 
 use std::env;
@@ -15,6 +21,7 @@ const VERSION_MINOR: &str = env!("CARGO_PKG_VERSION_MINOR");
 const VERSION_PATCH: &str = env!("CARGO_PKG_VERSION_PATCH");
 const VERSION_PRE: &str = env!("CARGO_PKG_VERSION_PRE");
 
+/// Struct representing the app version segments.
 #[typeshare]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,10 +32,16 @@ pub struct Version {
     pre: Option<String>,
 }
 
+/// Main root response: `GET /api`
 pub async fn info() -> String{
     format!("Welcome to {} v{}", NAME, VERSION)
 }
 
+/// Root version response: `GET /api/version`.
+///
+/// # Returns
+///
+///  [Version]: which is defined in `cargo.toml` formatted in Json.
 pub async fn version() -> Result<Json<Version>, (StatusCode, String)> {
     let pre = match VERSION_PRE {
         "" => None,
@@ -45,6 +58,11 @@ pub async fn version() -> Result<Json<Version>, (StatusCode, String)> {
     Ok(Json(version))
 }
 
+/// Root authors response: `GET /api/authors`.
+///
+/// # Returns
+///
+/// `&str`: Authors defined in `cargo.toml`, given in  a stringified list.
 pub async fn authors() -> &'static str {
     match AUTHORS {
         "" => "No authors defined",

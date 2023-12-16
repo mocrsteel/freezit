@@ -1,3 +1,5 @@
+//! Application binary launcher
+
 use std::net::SocketAddr;
 
 use diesel_migrations::MigrationHarness;
