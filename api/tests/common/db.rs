@@ -87,14 +87,14 @@ impl Context {
             .into_iter()
             .map(|(_id, name)| {
                 NewFreezer {
-                    name,
+                    name: String::from(name),
                 }
             }).collect();
         let drawers_feed: Vec<NewDrawer> = db_data::DRAWERS
             .into_iter()
             .map(|(_id, name, freezer_id)| {
                 NewDrawer {
-                    name,
+                    name: String::from(name),
                     freezer_id,
                 }
             }).collect();
@@ -102,7 +102,7 @@ impl Context {
             .into_iter()
             .map(|(_id, name, expiration_months)| {
                 NewProduct {
-                    name,
+                    name: String::from(name),
                     expiration_months: Some(expiration_months),
                 }
             }).collect();

@@ -1,14 +1,17 @@
-#[warn(missing_docs)]
+//! Freezit API. 
+#![warn(missing_docs)]
+
 pub mod connection;
 pub mod models;
 pub mod routes;
+#[allow(missing_docs)]
 pub mod schema;
 pub mod error;
 
 use std::time::Duration;
 
 use axum::{
-    routing::get,
+    routing::{get, post, patch, delete},
     response::Response,
     body::Body,
     http::{HeaderMap, Request},
@@ -36,9 +39,13 @@ pub async fn app(db_url: Option<String>) -> Router {
     };
 
     let products_subroutes = Router::new()
-        .route("?id=:id", get(products::get_product_by_id))
-        .route("?name=:name", get(products::get_product_by_name))
-        .route("?expiration=:expiration", get(products::get_products_by_expiration));
+        .route("/", get(products::get_all_products))
+        .route("/", patch(products::update_product))
+        .route("/id=:id", delete(products::delete_product))
+        .route("/id=:id", get(products::get_product_by_id))
+        .route("/name=:name", get(products::get_product_by_name))
+        .route("/expiration=:expiration", get(products::get_products_by_expiration))
+        .route("/create", post(products::create_product));
 
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))

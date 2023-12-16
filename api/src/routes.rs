@@ -1,4 +1,4 @@
-//! Module containing all different API routes.
+//! API endpoints.
 pub mod root;
 pub mod products;
 pub mod storage;
