@@ -11,39 +11,46 @@ jobs:
     name: Build and test
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-
-    # Service containers to run with `container-job`
-    services:
-      # Label used to access the service container
-      postgres:
-        # Docker Hub image
-        image: postgres
-        # Provide the password for postgres
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5342
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-          
+    
     steps:
+      - name: Install postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev postgresql
+          echo "host    all             all             127.0.0.1/32            md5" > sudo tee -a /etc/postgresql/10/main/pg_hba.conf
+          sudo service postgresql restart && sleep 3
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          sudo service postgresql restart && sleep 3
+          echo "PG_DATABASE_URL=postgres://postgres:postgres@localhost/" >> $GITHUB_ENV
+          echo "PG_EXAMPLE_DATABASE_URL=postgres://postgres:postgres@localhost/diesel_example" >> $GITHUB_ENV
+      - name: Test postgres connection
+        run: psql postgres://postgres:postgres@localhost/postgres -l
       - name: Checkout sources
         uses: actions/checkout@v3
-  #    - name: Test postgres connection
-  #      run: psql postgres://postgres:postgres@localhost:5432/postgres -l
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Rust version check
+        shell: bash
+        run: |
+          cargo --version
+          rustc --version
+      - name: Install diesel CLI
+        run: cargo install diesel_cli --no-default-features --features postgres
+      - name: Initialize database
+        run: diesel setup
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db
       - name: Build
         run: cargo build --verbose
         working-directory: api
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?connect_timeout=60
-          DATABASE_BASE_URL: postgres://postgres:postgres@localhost:5432
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost
       - name: Run tests
         run: cargo test --verbose
         working-directory: api
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?connect_timeout=60
-          DATABASE_BASE_URL: postgres://postgres:postgres@localhost:5432
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost
