@@ -8,6 +8,7 @@ on:
 jobs:
   # Label of the container job
   build_test:
+    name: Build and test
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `container-job` executes in
@@ -21,23 +22,21 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: db
-          POSTGRES_HOST: localhost
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5342
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5342
-
+          
     steps:
-      - name: Test postgres
-        run: psql postgres://user:password@localhost/db -c "Select 1"
- #     - uses: actions/checkout@v3
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Test postgres connection
+        run: psql postgres://postgres:postgres@localhost:5432/postgres -c "SELECT 1;"
  #    - name: Build
  #       run: cargo build --verbose
  #       working-directory: api
