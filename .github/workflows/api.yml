@@ -11,9 +11,6 @@ jobs:
     name: Build and test
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    
-    # Docker Hub image that `container-job` executes in
-    container: rust:latest
 
     # Service containers to run with `container-job`
     services:
@@ -38,15 +35,15 @@ jobs:
         uses: actions/checkout@v3
       - name: Test postgres connection
         run: psql postgres://postgres:postgres@localhost:5432/postgres -l
- #    - name: Build
- #       run: cargo build --verbose
- #       working-directory: api
- #       env:
- #        DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
- #         DATABASE_BASE_URL: postgres://postgres-user:postgresd-password@localhost:5432
- #     - name: Run tests
- #       run: cargo test --verbose
- #       working-directory: api
- #       env:
- #         DATABASE_URL: postgres://postgres-user:postgres-password@localhost:5432/postgres?connect_timeout=60
- #         DATABASE_BASE_URL: postgres://postgres-user:postgres-password@localhost:5432
+      - name: Build
+        run: cargo build --verbose
+        working-directory: api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost:5432
+      - name: Run tests
+        run: cargo test --verbose
+        working-directory: api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost:5432
