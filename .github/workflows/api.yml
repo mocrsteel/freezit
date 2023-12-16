@@ -36,7 +36,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
       - name: Test postgres connection
-        run: psql postgres://postgres:postgres@localhost:5432/postgres -c "SELECT 1;"
+        run: psql postgres://postgres:postgres@localhost:5432/postgres -l
  #    - name: Build
  #       run: cargo build --verbose
  #       working-directory: api
