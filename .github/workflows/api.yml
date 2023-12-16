@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Test postgres
-        run: psql postgres://user:password@127.0.0.1:5432/db -c "Select 1"
+        run: psql postgres://user:password@0.0.0.0:5432/db -c "Select 1"
  #     - uses: actions/checkout@v3
  #    - name: Build
  #       run: cargo build --verbose
