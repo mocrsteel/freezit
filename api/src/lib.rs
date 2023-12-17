@@ -24,7 +24,7 @@ use tower_http::{
 };
 use tracing::Span;
 
-use crate::routes::{root, products};
+use crate::routes::{root, products, freezers};
 
 /// Contains application state variables.
 #[derive(Clone)]
@@ -41,18 +41,27 @@ pub async fn app(db_url: Option<String>) -> Router {
     let products_subroutes = Router::new()
         .route("/", get(products::get_all_products))
         .route("/", patch(products::update_product))
-        .route("/id=:id", delete(products::delete_product))
+        .route("/create", post(products::create_product))
         .route("/id=:id", get(products::get_product_by_id))
+        .route("/id=:id", delete(products::delete_product))
         .route("/name=:name", get(products::get_product_by_name))
-        .route("/expiration=:expiration", get(products::get_products_by_expiration))
-        .route("/create", post(products::create_product));
+        .route("/expiration=:expiration", get(products::get_products_by_expiration));
+
+    let freezer_subroutes = Router::new()
+        .route("/", get(freezers::get_all_freezers))
+        .route("/", patch(freezers::update_freezer))
+        .route("/create", post(freezers::update_freezer))
+        .route("/id=:id", get(freezers::get_freezer_by_id))
+        .route("/id=:id", delete(freezers::delete_freezer))
+        .route("/name=:name", get(freezers::get_freezer_by_name));
 
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))
         .route("/info", get(root::info))
         .route("/authors", get(root::authors))
         .route("/version", get(root::version))
-        .nest("/products", products_subroutes);
+        .nest("/products", products_subroutes)
+        .nest("/freezers", freezer_subroutes);
 
     Router::new()
         .nest("/api", api_subroutes)

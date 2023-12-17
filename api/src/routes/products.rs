@@ -102,9 +102,9 @@ pub async fn get_all_products(State(state): State<AppState>) -> Result<Json<Vec<
 
 /// Create a new product in the database: `POST /api/products`.
 ///
-/// # Requires
+/// # Required body
 ///
-/// Body following the [NewProduct] model in `application/json'.
+/// [NewProduct] model in `application/json'.
 /// The product name must be unique.
 ///
 /// # Returns
@@ -131,9 +131,9 @@ pub async fn create_product(State(state): State<AppState>, new_product: Json<New
 /// Updates a new product in the database: `PATCH /api/products`. The frontend should never change
 /// the product id, only the [Product] name and [Product] expiration_months.
 ///
-/// # Requires
+/// # Required body
 ///
-/// Body following the [Product] model in `application/json'.
+/// [Product] model in `application/json'.
 /// The product name must be unique.
 ///
 /// # Returns
