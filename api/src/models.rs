@@ -2,6 +2,7 @@
 
 use chrono::NaiveDate;
 use diesel::prelude::*;
+use serde::{Serialize, Deserialize};
 use typeshare::typeshare;
 
 use crate::schema::{products, freezers, drawers, storage};
@@ -17,7 +18,7 @@ pub type ProductTuple = (i32, &'static str, i32);
 /// The expiration time is used to calculate the expiration date of the different storage items in
 /// the freezers and can be used to help the user which storage items should be consumed first.
 #[typeshare]
-#[derive(Debug, serde::Serialize, serde::Deserialize, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
 #[diesel(table_name = products)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +62,7 @@ pub type FreezerTuple = (i32, &'static str);
 ///
 /// This model represents the different freezers that might be in use at the user.
 #[typeshare]
-#[derive(Debug, serde::Serialize, Queryable, Selectable, AsChangeset)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
 #[diesel(table_name = freezers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -105,7 +106,7 @@ pub type DrawerTuple = (i32, &'static str, i32);
 ///
 /// The combination of [Self::name] and [Self::freezer_id] must be unique.
 #[typeshare]
-#[derive(Debug, serde::Serialize, Queryable, Selectable, AsChangeset)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
 #[diesel(table_name = drawers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -152,7 +153,7 @@ pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32)
 /// The date in will be either automatically set to the current date when not filled in, while the
 /// date out will only be set once the product is withdrawn from the freezer.
 #[typeshare]
-#[derive(Debug, serde::Serialize, Queryable, Selectable, Associations, AsChangeset)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset)]
 #[diesel(table_name = storage)]
 #[diesel(belongs_to(Product))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -205,12 +206,24 @@ impl Storage {
         }).collect()
     }
 }
+impl PartialEq for Storage {
+    fn eq(&self, other: &Self) -> bool {
+        self.weight_grams - other.weight_grams < 1e-6 &&
+            self.storage_id == other.storage_id &&
+            self.product_id == other.product_id &&
+            self.drawer_id == other.drawer_id &&
+            self.date_in == other.date_in &&
+            self.date_out == other.date_out &&
+            self.available == other.available
+
+    }
+}
 
 // Insert
 
 /// Insertable product containing the required fields.
 #[typeshare]
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, Insertable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = products)]
 #[serde(rename_all = "camelCase")]
 pub struct NewProduct {
@@ -222,7 +235,7 @@ pub struct NewProduct {
 
 /// Insertable storage item containing the required fields.
 #[typeshare]
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, Insertable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = storage)]
 #[serde(rename_all = "camelCase")]
 pub struct NewStorageItem {
@@ -240,7 +253,7 @@ pub struct NewStorageItem {
 
 /// Insertable freezer containing the required fields.
 #[typeshare]
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, Insertable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = freezers)]
 #[serde(rename_all = "camelCase")]
 pub struct NewFreezer {
@@ -250,7 +263,7 @@ pub struct NewFreezer {
 
 /// Insertable freezer drawer containing the required fields.
 #[typeshare]
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, Insertable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Insertable)]
 #[diesel(table_name = drawers)]
 #[serde(rename_all = "camelCase")]
 pub struct NewDrawer {

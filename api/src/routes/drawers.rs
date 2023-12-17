@@ -1,0 +1,1 @@
+//! Endpoint `/api/drawers`, implements `GET`, `POST`, `PATCH`, `DELETE`.
