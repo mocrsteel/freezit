@@ -6,19 +6,30 @@ source .env
 #PSQL="psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c"
 PSQL="psql postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB} -c"
 
+# cd ..
+# DIESEL="$(diesel migration run)"
+# if [[ -z "$(diesel)" ]]
+# then
+#   cargo install diesel_cli
+# fi
+
+# diesel setup
+
 echo -e "\nPerforming reset of database ${POSTGRES_DB}"
 
 # Clear the database before re-inserting data.
 echo -e "\nTruncating table 'storage'"
-$PSQL "TRUNCATE TABLE storage RESTART IDENTITY CASCADE;"
+$PSQL "TRUNCATE TABLE IF EXISTS storage RESTART IDENTITY CASCADE;"
 echo -e "\nTruncating table 'drawers'"
-$PSQL "TRUNCATE TABLE drawers RESTART IDENTITY CASCADE;"
+$PSQL "TRUNCATE TABLE IF EXISTS drawers RESTART IDENTITY CASCADE;"
 echo -e "\nTruncating table 'freezers'"
-$PSQL "TRUNCATE TABLE freezers RESTART IDENTITY CASCADE;"
+$PSQL "TRUNCATE TABLE IF EXISTS freezers RESTART IDENTITY CASCADE;"
 echo -e "\nTruncating table 'products'"
-$PSQL "TRUNCATE table products RESTART IDENTITY CASCADE;"
+$PSQL "TRUNCATE TABLE IF EXISTS products RESTART IDENTITY CASCADE;"
 
-# Feeding test data to the database
+
+
+eeding test data to the database
 # -- products
 echo -e "Feeding products to database"
 $PSQL "
