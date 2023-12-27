@@ -2,6 +2,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use diesel::debug_query;
 use serde_json::ser;
 use tower::{Service, ServiceExt};
 
@@ -14,7 +15,7 @@ use api::{
 static MOD: &str = "router_freezers";
 
 #[tokio::test]
-async fn creates_product_correctly() {
+async fn creates_freezer_correctly() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
@@ -28,7 +29,7 @@ async fn creates_product_correctly() {
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&new_freezer).unwrap()))
         .unwrap();
-    let create_response = ServiceExt::ready(&mut app)
+    let create_response = ServiceExt::<Request<Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -198,7 +199,7 @@ async fn root_gets_all_freezers() {
 }
 
 #[tokio::test]
-async fn updates_product_correctly() {
+async fn updates_freezer_correctly() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
@@ -311,7 +312,7 @@ async fn update_returns_error_on_non_unique_name() {
 }
 
 #[tokio::test]
-async fn deletes_product_correctly() {
+async fn deletes_freezer_correctly() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
@@ -329,28 +330,22 @@ async fn deletes_product_correctly() {
 
     assert_eq!(delete_response.status(), StatusCode::OK);
 
-    let check_response = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/freezers/id=1")
-                .body(Body::empty())
-                .unwrap(),
-        )
+    let request = Request::builder()
+        .uri("/api/freezers/id=1")
+        .body(Body::empty())
+        .unwrap();
+    let check_response = ServiceExt::ready(&mut app)
+        .await
+        .unwrap()
+        .call(request)
         .await
         .unwrap();
-
-    assert_eq!(
-        check_response.status(),
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "Got error '{}' instead",
-        check_response.status().canonical_reason().unwrap()
-    );
 
     let body = hyper::body::to_bytes(check_response.into_body())
         .await
         .unwrap();
 
-    assert_eq!(&body[..], b"Record not found")
+    assert_eq!(std::str::from_utf8(&body[..]).unwrap(), String::from("Record not found"))
 }
 
 #[tokio::test]
@@ -378,5 +373,5 @@ async fn delete_returns_error_on_nonexistent_id() {
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
 
-    assert_eq!(&body[..], b"Record not found");
+    assert_eq!(&body[..], b"This freezer id does not exist");
 }

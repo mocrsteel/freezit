@@ -131,6 +131,18 @@ pub async fn create_product(
     let conn = &mut establish_connection(state.db_url);
     let new_product = new_product.deref().to_owned();
 
+    let name_query = products
+        .filter(name.eq(&new_product.name))
+        .get_results::<Product>(conn)
+        .map_err(internal_error)?;
+
+    if !name_query.is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This product name already exists"),
+        ));
+    }
+
     let res = diesel::insert_into(products)
         .values(new_product)
         .returning(Product::as_returning())
@@ -164,8 +176,6 @@ pub async fn update_product(
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
     let updated_product = update_product.deref().to_owned();
-    dbg!(&update_product);
-    dbg!(&updated_product);
 
     let name_lookup = products
         .filter(product_id.ne(&update_product.product_id))
@@ -186,8 +196,6 @@ pub async fn update_product(
         .returning(Product::as_returning())
         .get_result(conn)
         .map_err(internal_error)?;
-
-    dbg!(&res);
 
     Ok(Json(res))
 }
@@ -215,11 +223,16 @@ pub async fn delete_product(
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
-    // This should return an error if the product does not exist.
-    products
+    let id_query = products
         .find(id)
-        .first::<Product>(conn)
+        .get_results::<Product>(conn)
         .map_err(internal_error)?;
+    if id_query.is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This product id does not exist")
+        ));
+    }
 
     diesel::delete(products)
         .filter(product_id.eq(id))

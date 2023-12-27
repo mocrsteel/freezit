@@ -50,7 +50,7 @@ pub async fn app(db_url: Option<String>) -> Router {
     let freezer_subroutes = Router::new()
         .route("/", get(freezers::get_all_freezers))
         .route("/", patch(freezers::update_freezer))
-        .route("/create", post(freezers::update_freezer))
+        .route("/create", post(freezers::create_freezer))
         .route("/id=:id", get(freezers::get_freezer_by_id))
         .route("/id=:id", delete(freezers::delete_freezer))
         .route("/name=:name", get(freezers::get_freezer_by_name));

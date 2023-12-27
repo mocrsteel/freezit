@@ -284,11 +284,7 @@ async fn cannot_change_product_name_to_existing() {
 
     product.name = String::from(other_product_name);
 
-    dbg!(&product);
-
     let update_product = serde_json::ser::to_string(&product).unwrap();
-
-    dbg!(&update_product);
 
     let request = Request::builder()
         .uri("/api/products")
@@ -365,5 +361,5 @@ async fn delete_nonexistent_product_returns_error() {
 
     let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
     
-    assert_eq!(&body_bytes[..], b"Record not found");
+    assert_eq!(&body_bytes[..], b"This product id does not exist");
 }
