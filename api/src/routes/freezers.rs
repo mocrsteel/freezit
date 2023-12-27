@@ -147,7 +147,6 @@ pub async fn create_freezer(
     new_freezer: Json<NewFreezer>,
 ) -> Result<Json<Freezer>, (StatusCode, String)> {
     use crate::schema::freezers::dsl::*;
-
     let conn = &mut establish_connection(state.db_url);
     let new_freezer = new_freezer.deref().to_owned();
 
@@ -156,7 +155,7 @@ pub async fn create_freezer(
         .get_results::<Freezer>(conn)
         .map_err(internal_error)?;
 
-    if name_query.len() > 0 {
+    if !name_query.is_empty() {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             String::from("This freezer name already exists"),
@@ -167,7 +166,9 @@ pub async fn create_freezer(
         .values(new_freezer)
         .returning(Freezer::as_returning())
         .get_result(conn)
-        .map_err(internal_error)?;
+        .map_err(|err| {
+          (StatusCode::INTERNAL_SERVER_ERROR, format!("Error while inserting freezer: {}", err));
+        }).unwrap();
 
     Ok(Json(create_result))
 }
@@ -177,4 +178,25 @@ pub async fn create_freezer(
 /// # Errors
 ///
 /// * `NotFound`: freezer id not found.
-pub async fn delete_freezer() {}
+pub async fn delete_freezer(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<i32>, (StatusCode, String)> {
+    use crate::schema::freezers::dsl::*;
+    let conn = &mut establish_connection(state.db_url);
+
+    let id_query = freezers
+        .find(id)
+        .get_results::<Freezer>(conn)
+        .map_err(internal_error)?;
+    if id_query.is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This freezer id does not exist"),
+        ));
+    }
+
+    diesel::delete(freezers)
+        .filter(freezer_id.eq(id))
+        .execute(conn)
+        .map_err(internal_error)?;
+
+    Ok(Json(id))
+}
