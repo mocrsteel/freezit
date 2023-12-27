@@ -1,18 +1,18 @@
 //! Endpoint `/api/products`, implements `GET`, `POST`, `PATCH`, `DELETE`.
 
-use std::ops::Deref;
 use axum::{
     extract::{Path, State},
-    response::Json,
     http::StatusCode,
+    response::Json,
 };
-use diesel::QueryDsl;
 use diesel::prelude::*;
+use diesel::QueryDsl;
+use std::ops::Deref;
 
-use crate::AppState;
-use crate::error::internal_error;
-use crate::models::{Product, NewProduct};
 use crate::connection::establish_connection;
+use crate::error::internal_error;
+use crate::models::{NewProduct, Product};
+use crate::AppState;
 
 /// Get a product entry by its ID, given as a path parameter: `GET /api/products/id=<i32>`.
 ///
@@ -23,7 +23,10 @@ use crate::connection::establish_connection;
 /// # Errors
 ///
 /// * `NotFound` => "Product not found".
-pub async fn get_product_by_id(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<Product>, (StatusCode, String)> {
+pub async fn get_product_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<Json<Product>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
@@ -45,7 +48,10 @@ pub async fn get_product_by_id(State(state): State<AppState>, Path(id): Path<i32
 /// # Errors
 ///
 /// * `NotFound` => "Product not found".
-pub async fn get_product_by_name(State(state): State<AppState>, Path(query_name): Path<String>) -> Result<Json<Product>, (StatusCode, String)> {
+pub async fn get_product_by_name(
+    State(state): State<AppState>,
+    Path(query_name): Path<String>,
+) -> Result<Json<Product>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
@@ -68,7 +74,10 @@ pub async fn get_product_by_name(State(state): State<AppState>, Path(query_name)
 /// # Errors
 ///
 /// * `ExpirationNotFound` => "No products defined with this expiration time".
-pub async fn get_products_by_expiration(State(state): State<AppState>, Path(query_expiration): Path<i32>) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
+pub async fn get_products_by_expiration(
+    State(state): State<AppState>,
+    Path(query_expiration): Path<i32>,
+) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
@@ -89,22 +98,22 @@ pub async fn get_products_by_expiration(State(state): State<AppState>, Path(quer
 /// # Errors
 ///
 /// * `NotFound` => "Product not found". Only returned on an empty database.
-pub async fn get_all_products(State(state): State<AppState>) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
+pub async fn get_all_products(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
-    let res = products
-        .load::<Product>(conn)
-        .map_err(internal_error)?;
+    let res = products.load::<Product>(conn).map_err(internal_error)?;
 
     Ok(Json(res))
 }
 
 /// Create a new product in the database: `POST /api/products`.
 ///
-/// # Requires
+/// # Required body
 ///
-/// Body following the [NewProduct] model in `application/json'.
+/// [NewProduct] model in `application/json'.
 /// The product name must be unique.
 ///
 /// # Returns
@@ -114,10 +123,25 @@ pub async fn get_all_products(State(state): State<AppState>) -> Result<Json<Vec<
 /// # Errors
 ///
 /// * `Duplicate` => "This product name already exists".
-pub async fn create_product(State(state): State<AppState>, new_product: Json<NewProduct>) -> Result<Json<Product>, (StatusCode, String)> {
+pub async fn create_product(
+    State(state): State<AppState>,
+    new_product: Json<NewProduct>,
+) -> Result<Json<Product>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
     let new_product = new_product.deref().to_owned();
+
+    let name_query = products
+        .filter(name.eq(&new_product.name))
+        .get_results::<Product>(conn)
+        .map_err(internal_error)?;
+
+    if !name_query.is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This product name already exists"),
+        ));
+    }
 
     let res = diesel::insert_into(products)
         .values(new_product)
@@ -131,9 +155,9 @@ pub async fn create_product(State(state): State<AppState>, new_product: Json<New
 /// Updates a new product in the database: `PATCH /api/products`. The frontend should never change
 /// the product id, only the [Product] name and [Product] expiration_months.
 ///
-/// # Requires
+/// # Required body
 ///
-/// Body following the [Product] model in `application/json'.
+/// [Product] model in `application/json'.
 /// The product name must be unique.
 ///
 /// # Returns
@@ -145,12 +169,13 @@ pub async fn create_product(State(state): State<AppState>, new_product: Json<New
 /// * `Duplicate` => "This product name already exists".
 /// * `NotFound` => "Product not found". Returned when a wrong product_id was entered.
 ///
-pub async fn update_product(State(state): State<AppState>, update_product: Json<Product>) -> Result<Json<Product>, (StatusCode, String)> {
+pub async fn update_product(
+    State(state): State<AppState>,
+    update_product: Json<Product>,
+) -> Result<Json<Product>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
     let updated_product = update_product.deref().to_owned();
-    dbg!(&update_product);
-    dbg!(&updated_product);
 
     let name_lookup = products
         .filter(product_id.ne(&update_product.product_id))
@@ -158,10 +183,11 @@ pub async fn update_product(State(state): State<AppState>, update_product: Json<
         .get_results::<Product>(conn)
         .map_err(internal_error)?;
 
-    dbg!(&name_lookup);
-
     if name_lookup.len() > 1 {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("This product name already exists.")));
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This product name already exists."),
+        ));
     }
 
     let res = diesel::update(products)
@@ -170,8 +196,6 @@ pub async fn update_product(State(state): State<AppState>, update_product: Json<
         .returning(Product::as_returning())
         .get_result(conn)
         .map_err(internal_error)?;
-
-    dbg!(&res);
 
     Ok(Json(res))
 }
@@ -192,15 +216,23 @@ pub async fn update_product(State(state): State<AppState>, update_product: Json<
 /// * `Duplicate` => "This product name already exists".
 /// * `NotFound` => "Product not found". Returned when a wrong product_id was entered.
 ///
-pub async fn delete_product(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<i32>, (StatusCode, String)> {
+pub async fn delete_product(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<Json<i32>, (StatusCode, String)> {
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
-    // This should return an error if the product does not exist.
-    products
+    let id_query = products
         .find(id)
-        .first::<Product>(conn)
+        .get_results::<Product>(conn)
         .map_err(internal_error)?;
+    if id_query.is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("This product id does not exist")
+        ));
+    }
 
     diesel::delete(products)
         .filter(product_id.eq(id))
