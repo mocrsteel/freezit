@@ -9,10 +9,11 @@ use diesel::QueryDsl;
 use std::ops::Deref;
 
 use crate::{
-    connection::establish_connection,
-    error::internal_error,
+    core::{
+        connection::establish_connection,
+        error::internal_error,
+    },
     models::{Freezer, NewFreezer},
-    schema::drawers::freezer_id,
     AppState,
 };
 

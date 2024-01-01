@@ -2,7 +2,6 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use diesel::debug_query;
 use serde_json::ser;
 use tower::{Service, ServiceExt};
 
@@ -99,9 +98,10 @@ async fn create_returns_error_on_non_unique_name() {
     let body = hyper::body::to_bytes(create_response.into_body())
         .await
         .unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
 
     // Probably needs fine-tuning in terms of response message.
-    assert_eq!(&body[..], b"This freezer name already exists");
+    assert_eq!(error_text, "This freezer name already exists");
 }
 
 #[tokio::test]
@@ -307,8 +307,9 @@ async fn update_returns_error_on_non_unique_name() {
     let body = hyper::body::to_bytes(update_response.into_body())
         .await
         .unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
 
-    assert_eq!(&body[..], b"This freezer name already exists")
+    assert_eq!(error_text, "This freezer name already exists")
 }
 
 #[tokio::test]
@@ -372,6 +373,7 @@ async fn delete_returns_error_on_nonexistent_id() {
     );
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
 
-    assert_eq!(&body[..], b"This freezer id does not exist");
+    assert_eq!(error_text, "This freezer id does not exist");
 }

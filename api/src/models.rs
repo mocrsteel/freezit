@@ -106,7 +106,8 @@ pub type DrawerTuple = (i32, &'static str, i32);
 ///
 /// The combination of [Self::name] and [Self::freezer_id] must be unique.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Eq, PartialEq)]
+#[diesel(belongs_to(Freezer))]
 #[diesel(table_name = drawers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -156,6 +157,7 @@ pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32)
 #[derive(Debug, Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset)]
 #[diesel(table_name = storage)]
 #[diesel(belongs_to(Product))]
+#[diesel(belongs_to(Drawer))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
 pub struct Storage {

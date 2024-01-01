@@ -1,6 +1,6 @@
 //! Endpoint `/api/storage`, implements `GET`, `POST`, `PATCH`, `DELETE`.
 
-use crate::models::{Storage, NewStorageItem};
+// use crate::models::{Storage, NewStorageItem};
 
 /// Get all storage entries: `GET /api/storage`.
 ///

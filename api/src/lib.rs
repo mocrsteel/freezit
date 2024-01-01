@@ -1,12 +1,11 @@
 //! Freezit API. 
 #![warn(missing_docs)]
 
-pub mod connection;
+pub mod core;
 pub mod models;
 pub mod routes;
 #[allow(missing_docs)]
 pub mod schema;
-pub mod error;
 
 use std::time::Duration;
 
@@ -24,7 +23,7 @@ use tower_http::{
 };
 use tracing::Span;
 
-use crate::routes::{root, products, freezers};
+use crate::routes::{root, products, freezers, drawers};
 
 /// Contains application state variables.
 #[derive(Clone)]
@@ -55,13 +54,20 @@ pub async fn app(db_url: Option<String>) -> Router {
         .route("/id=:id", delete(freezers::delete_freezer))
         .route("/name=:name", get(freezers::get_freezer_by_name));
 
+    let drawer_subroutes = Router::new()
+        .route("/", get(drawers::get_drawers))
+        .route("/", post(drawers::create_drawer))
+        .route("/", patch(drawers::update_drawer))
+        .route("/:id", delete(drawers::delete_drawer));
+
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))
         .route("/info", get(root::info))
         .route("/authors", get(root::authors))
         .route("/version", get(root::version))
         .nest("/products", products_subroutes)
-        .nest("/freezers", freezer_subroutes);
+        .nest("/freezers", freezer_subroutes)
+        .nest("/drawers", drawer_subroutes);
 
     Router::new()
         .nest("/api", api_subroutes)

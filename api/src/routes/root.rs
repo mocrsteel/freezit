@@ -4,7 +4,7 @@
 //!
 //! Can be used to display version and package information in an about page on the frontend.
 
-use crate::error::internal_error;
+use crate::core::error::internal_error;
 
 use std::env;
 
