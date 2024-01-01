@@ -2,7 +2,7 @@ use crate::common::db_data::PRODUCTS;
 use crate::common::db::Context;
 use api::app;
 
-use log::info;
+use log::{error, info};
 use axum::{
     body::Body,
     http::Request,
@@ -205,6 +205,11 @@ async fn cannot_create_existing_product() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
+
+    assert_eq!(error_text, "This product name already exists");
 }
 
 #[tokio::test]
@@ -284,8 +289,6 @@ async fn cannot_change_product_name_to_existing() {
 
     product.name = String::from(other_product_name);
 
-    let update_product = serde_json::ser::to_string(&product).unwrap();
-
     let request = Request::builder()
         .uri("/api/products")
         .method("PATCH")
@@ -303,8 +306,9 @@ async fn cannot_change_product_name_to_existing() {
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
 
-    assert_eq!(&body[..], b"duplicate key value violates unique constraint \"products_name_key\"");
+    assert_eq!(error_text, "This product name already exists");
 }
 
 #[tokio::test]
@@ -359,7 +363,8 @@ async fn delete_nonexistent_product_returns_error() {
 
     assert_eq!(&res.status(), &StatusCode::INTERNAL_SERVER_ERROR);
 
-    let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
-    
-    assert_eq!(&body_bytes[..], b"This product id does not exist");
+    let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
+    let error_text = std::str::from_utf8(&body[..]).unwrap();
+
+    assert_eq!(error_text, "This product id does not exist");
 }

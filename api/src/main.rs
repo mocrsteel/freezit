@@ -7,7 +7,7 @@ use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use api::app;
-use api::connection::{establish_connection, MIGRATIONS};
+use api::core::connection::{establish_connection, MIGRATIONS};
 
 #[tokio::main]
 async fn main() {

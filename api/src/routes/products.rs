@@ -9,8 +9,10 @@ use diesel::prelude::*;
 use diesel::QueryDsl;
 use std::ops::Deref;
 
-use crate::connection::establish_connection;
-use crate::error::internal_error;
+use crate::core::{
+    connection::establish_connection,
+    error::internal_error
+};
 use crate::models::{NewProduct, Product};
 use crate::AppState;
 
@@ -183,10 +185,10 @@ pub async fn update_product(
         .get_results::<Product>(conn)
         .map_err(internal_error)?;
 
-    if name_lookup.len() > 1 {
+    if !name_lookup.is_empty() {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            String::from("This product name already exists."),
+            String::from("This product name already exists"),
         ));
     }
 
@@ -209,11 +211,10 @@ pub async fn update_product(
 ///
 /// # Returns
 ///
-/// The updated [Product].
+/// The deleted [Product] id.
 ///
 /// # Errors
 ///
-/// * `Duplicate` => "This product name already exists".
 /// * `NotFound` => "Product not found". Returned when a wrong product_id was entered.
 ///
 pub async fn delete_product(
