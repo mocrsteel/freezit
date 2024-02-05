@@ -1,0 +1,4 @@
+{
+    "rustTestExplorer.rootCargoManifestFilePath": "${workspaceFolder}/cargo.toml",
+    "testing.alwaysRevealTestOnStateChange": true
+}

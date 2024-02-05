@@ -23,7 +23,7 @@ use tower_http::{
 };
 use tracing::Span;
 
-use crate::routes::{root, products, freezers, drawers};
+use crate::routes::{root, products, freezers, drawers, storage};
 
 /// Contains application state variables.
 #[derive(Clone)]
@@ -60,6 +60,15 @@ pub async fn app(db_url: Option<String>) -> Router {
         .route("/", patch(drawers::update_drawer))
         .route("/:id", delete(drawers::delete_drawer));
 
+    let storage_subroutes = Router::new()
+        .route("/", get(storage::get_storage))
+        .route("/:id", get(storage::get_storage_by_id))
+        .route("/", post(storage::create_storage))
+        .route("/", patch(storage::update_storage))
+        .route("/:id/withdraw", patch(storage::withdraw_storage))
+        .route("/:id/re-enter", patch(storage::re_enter_storage))
+        .route("/:id", delete(storage::delete_storage));
+
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))
         .route("/info", get(root::info))
@@ -67,7 +76,8 @@ pub async fn app(db_url: Option<String>) -> Router {
         .route("/version", get(root::version))
         .nest("/products", products_subroutes)
         .nest("/freezers", freezer_subroutes)
-        .nest("/drawers", drawer_subroutes);
+        .nest("/drawers", drawer_subroutes)
+        .nest("/storage", storage_subroutes);
 
     Router::new()
         .nest("/api", api_subroutes)

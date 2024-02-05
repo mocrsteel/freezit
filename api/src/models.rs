@@ -1,6 +1,6 @@
 //! [diesel.rs](http://diesel.rs) models.
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, DateTime, Local};
 use diesel::prelude::*;
 use serde::{Serialize, Deserialize};
 use typeshare::typeshare;
@@ -18,7 +18,8 @@ pub type ProductTuple = (i32, &'static str, i32);
 /// The expiration time is used to calculate the expiration date of the different storage items in
 /// the freezers and can be used to help the user which storage items should be consumed first.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
+#[diesel(primary_key(product_id))]
 #[diesel(table_name = products)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -62,7 +63,8 @@ pub type FreezerTuple = (i32, &'static str);
 ///
 /// This model represents the different freezers that might be in use at the user.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+#[diesel(primary_key(freezer_id))]
 #[diesel(table_name = freezers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -106,8 +108,9 @@ pub type DrawerTuple = (i32, &'static str, i32);
 ///
 /// The combination of [Self::name] and [Self::freezer_id] must be unique.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Eq, PartialEq)]
-#[diesel(belongs_to(Freezer))]
+#[derive(Debug, Serialize, Deserialize, Identifiable, Selectable, Queryable, Associations, AsChangeset, Eq, PartialEq)]
+#[diesel(primary_key(drawer_id))]
+#[diesel(belongs_to(Freezer, foreign_key = freezer_id))]
 #[diesel(table_name = drawers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(rename_all = "camelCase")]
@@ -119,6 +122,7 @@ pub struct Drawer {
     /// Freezer id.
     pub freezer_id: i32,
 }
+
 impl Drawer {
     /// **For testing purposes.** Creates a drawers from a single tuple (statically
     /// defined in `tests/common/db_data.rs`).
@@ -154,11 +158,13 @@ pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32)
 /// The date in will be either automatically set to the current date when not filled in, while the
 /// date out will only be set once the product is withdrawn from the freezer.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset)]
+#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, Associations, AsChangeset)]
+#[diesel(primary_key(storage_id))]
 #[diesel(table_name = storage)]
-#[diesel(belongs_to(Product))]
-#[diesel(belongs_to(Drawer))]
+#[diesel(belongs_to(Product, foreign_key = product_id))]
+#[diesel(belongs_to(Drawer, foreign_key = drawer_id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(treat_none_as_null = true)]
 #[serde(rename_all = "camelCase")]
 pub struct Storage {
     /// Storage id, serial number
@@ -169,7 +175,8 @@ pub struct Storage {
     pub drawer_id: i32,
     /// Weight of the product being stored, expressed in grams.
     pub weight_grams: f32,
-    /// Date of storage, defaults to the current date.
+    /// Date of storage, defaults to the current date. Input is stored based on the Utc DateTime,
+    /// which is converted from `DateTime<Local>`
     pub date_in: NaiveDate,
     /// Date taken out of storage.
     pub date_out: Option<NaiveDate>,
@@ -251,6 +258,30 @@ pub struct NewStorageItem {
     pub date_in: NaiveDate,
     /// **Required**: Availability, should be True on entry.
     pub available: bool,
+}
+impl NewStorageItem {
+    /// Create new storage item. `date_in` is accepted as [Local] [DateTime].
+    pub fn from(product_id: i32, drawer_id: i32, weight_grams: f32, date_in: DateTime<Local>) -> Self {
+        let date_in = date_in.naive_utc().date();
+        NewStorageItem {
+            product_id,
+            drawer_id,
+            weight_grams,
+            date_in,
+            available: true
+        }
+    }
+}
+
+/// Allows storage availability update. Required to be able to set date_out to `NULL`.
+#[derive(Debug, Clone, Deserialize, Serialize, AsChangeset)]
+#[diesel(table_name = storage)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStorageAvailability {
+    /// [Storage] : field `available`
+    pub available: bool,
+    /// [Storage] : field `date_out`
+    pub date_out: Option<NaiveDate>,
 }
 
 /// Insertable freezer containing the required fields.

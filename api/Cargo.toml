@@ -4,6 +4,7 @@ version = "0.1.0-alpha"
 edition = "2021"
 authors = ["mocrsteel <https://github.com/mocrsteel>"]
 repository = "https://github.com/mocrsteel/freezit"
+default-run = "api"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,6 +21,7 @@ log = "0.4.20"
 regex = "1.10.2"
 serde = "1.0.190"
 serde_json = "1.0.107"
+struct_iterable = "0.1.1"
 test-log = "0.2.13"
 tokio = { version = "1.33.0", features = ["full"] }
 tower-http = { version = "0.4.4", features = ["full"] }
@@ -29,4 +31,7 @@ typeshare = "1.0.1"
 
 [dev-dependencies]
 tower = { version = "0.4.13", features = ["util"] }
+
+[[bin]]
+name = "playground"
 
