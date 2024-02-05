@@ -13,12 +13,12 @@ jobs:
     steps:
       - name: Install postgres
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libpq-dev postgresql
-          echo "host    all             all             127.0.0.1/32            md5" > sudo tee -a /etc/postgresql/10/main/pg_hba.conf
-          sudo service postgresql restart && sleep 3
-          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
-          sudo service postgresql restart && sleep 3
+          apt-get update
+          apt-get install -y libpq-dev postgresql
+          echo "host    all             all             127.0.0.1/32            md5" > tee -a /etc/postgresql/10/main/pg_hba.conf
+          service postgresql restart && sleep 3
+          postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          service postgresql restart && sleep 3
           echo "PG_DATABASE_URL=postgres://postgres:postgres@localhost/" >> $GITHUB_ENV
           echo "PG_EXAMPLE_DATABASE_URL=postgres://postgres:postgres@localhost/diesel_example" >> $GITHUB_ENV
       - name: Test postgres connection
