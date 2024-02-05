@@ -1,9 +1,7 @@
 name: Freezit API CI testing
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+  [push, pull_request]
+  
 
 jobs:
   # Label of the container job
@@ -54,3 +52,60 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
           DATABASE_BASE_URL: postgres://postgres:postgres@localhost
+
+  api-coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Install postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev postgresql
+          echo "host    all             all             127.0.0.1/32            md5" > sudo tee -a /etc/postgresql/10/main/pg_hba.conf
+          sudo service postgresql restart && sleep 3
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          sudo service postgresql restart && sleep 3
+          echo "PG_DATABASE_URL=postgres://postgres:postgres@localhost/" >> $GITHUB_ENV
+          echo "PG_EXAMPLE_DATABASE_URL=postgres://postgres:postgres@localhost/diesel_example" >> $GITHUB_ENV
+      - name: Test postgres connection
+        run: psql postgres://postgres:postgres@localhost/postgres -l
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Rust version check
+        shell: bash
+        run: |
+          cargo --version
+          rustc --version
+      - name: Install diesel CLI
+        run: cargo install diesel_cli --no-default-features --features postgres
+      - name: Initialize database
+        run: diesel setup
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db
+      - name: Build
+        run: cargo build --verbose
+        working-directory: api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost
+      - name: Generate code coverage
+        working-directory: api
+        run: |
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          fail_ci_if_error: true
