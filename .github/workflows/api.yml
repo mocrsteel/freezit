@@ -59,7 +59,7 @@ jobs:
         working-directory: api
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
-          DATABASE_BASE_URL: po
+          DATABASE_BASE_URL: postgres://postgres:postgres@localhost
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
