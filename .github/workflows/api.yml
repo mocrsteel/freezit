@@ -53,7 +53,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost/test_db?connect_timeout=60
           DATABASE_BASE_URL: postgres://postgres:postgres@localhost
       - name: Install tarpaulin (coverage)
-        run: cargo add cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
       - name: Run coverage analysis
         run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
         working-directory: api
