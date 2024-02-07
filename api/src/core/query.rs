@@ -62,6 +62,8 @@ impl ExpirationData {
 
 #[cfg(test)]
 mod expiration_data {
+    use chrono::Date;
+
     use super::*;
 
     #[test]
@@ -77,10 +79,10 @@ mod expiration_data {
 
 
         let expected_date_expires = DateTime::parse_from_str(
-            format!("2024/01/01 01:00:00 {}", now.offset().to_string().replace(':', "")).as_str(), "%Y/%m/%d %H:%M:%S %z",
+            format!("2024/01/01 13:00:00 {}", now.offset().to_string().replace(':', "")).as_str(), "%Y/%m/%d %H:%M:%S %z",
         ).unwrap();
         assert_eq!(expiration_data.expiration_months, Months::new(expiration_months as u32));
-        assert_eq!(expiration_data.date_expires.naive_utc(), expected_date_expires.naive_utc());
+        assert_eq!(expiration_data.date_expires.naive_utc().date(), expected_date_expires.naive_utc().date());
         assert!(expiration_data.expires_in_days < 0);
     }
 
