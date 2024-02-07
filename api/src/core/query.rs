@@ -80,7 +80,7 @@ mod expiration_data {
             format!("2024/01/01 01:00:00 {}", now.offset().to_string().replace(':', "")).as_str(), "%Y/%m/%d %H:%M:%S %z",
         ).unwrap();
         assert_eq!(expiration_data.expiration_months, Months::new(expiration_months as u32));
-        assert_eq!(expiration_data.date_expires, expected_date_expires);
+        assert_eq!(expiration_data.date_expires.naive_utc(), expected_date_expires.naive_utc());
         assert!(expiration_data.expires_in_days < 0);
     }
 
