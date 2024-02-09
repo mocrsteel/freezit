@@ -194,7 +194,7 @@ pub async fn update_product(
 
     let res = diesel::update(products)
         .filter(product_id.eq(&updated_product.product_id))
-        .set(updated_product)
+        .set(&updated_product)
         .returning(Product::as_returning())
         .get_result(conn)
         .map_err(internal_error)?;

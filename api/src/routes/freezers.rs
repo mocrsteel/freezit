@@ -113,7 +113,7 @@ pub async fn update_freezer(
         .get_results::<Freezer>(conn)
         .map_err(internal_error)?;
 
-    if name_lookup.len() > 0 {
+    if !name_lookup.is_empty() {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             String::from("This freezer name already exists"),
@@ -122,7 +122,7 @@ pub async fn update_freezer(
 
     let update_result = diesel::update(freezers)
         .filter(freezer_id.eq(&updated_freezer.freezer_id))
-        .set(updated_freezer)
+        .set(&updated_freezer)
         .returning(Freezer::as_returning())
         .get_result(conn)
         .map_err(internal_error)?;

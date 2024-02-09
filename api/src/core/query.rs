@@ -62,8 +62,6 @@ impl ExpirationData {
 
 #[cfg(test)]
 mod expiration_data {
-    use chrono::Date;
-
     use super::*;
 
     #[test]

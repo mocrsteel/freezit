@@ -132,17 +132,26 @@ impl StorageFilter {
 }
 
 /// Struct representing the returned object when querying the storage endpoint.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageResponse {
-    storage_id: i32,
-    product_name: String,
-    freezer_name: String,
-    drawer_name: String,
-    weight_grams: f32,
-    expires_in_days: i64,
-    expiration_date: NaiveDate,
-    in_storage_since: NaiveDate,
+    /// ID of the storage item.
+    pub storage_id: i32,
+    /// Name of the product linked to the [Storage] `product_id`.
+    pub product_name: String,
+    /// Name of the freezer linked to the [Storage] `drawer_id`.
+    pub freezer_name: String,
+    /// Name of the drawer linked to the [Storage] `drawer_id`.
+    pub drawer_name: String,
+    /// Weight of the storage item, in grams.
+    pub weight_grams: f32,
+    /// Time until the storage item expires, expressed in days.
+    /// Calculated from the [Storage] `date_in`, [Product] `expiration_months` and [Local] `now` time.
+    pub expires_in_days: i64,
+    /// Date of expiration of the storage item, calculated from [Storage] date of entry and [Product] expiration time.
+    pub expiration_date: NaiveDate,
+    /// Date of entry, renamed for frontend readability: [Storage] `date_in`.
+    pub in_storage_since: NaiveDate,
 }
 
 impl StorageResponse {
@@ -164,6 +173,18 @@ impl StorageResponse {
                 }
             })
             .collect::<Vec<StorageResponse>>()
+    }
+}
+impl PartialEq for StorageResponse {
+    fn eq(&self, other: &Self) -> bool {
+        self.storage_id == other.storage_id
+        && self.product_name == other.product_name
+        && self.freezer_name == other.freezer_name
+        && self.drawer_name == other.drawer_name
+        && (self.weight_grams - other.weight_grams).abs() <= 1e-6
+        && self.expires_in_days == other.expires_in_days
+        && self.expiration_date == other.expiration_date
+        && self.in_storage_since == other.in_storage_since
     }
 }
 
@@ -240,6 +261,7 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
 
     let storage_results = query
         .select((Storage::as_select(), Product::as_select(), Drawer::as_select(), Freezer::as_select()))
+        .order_by(storage_id)
         .load::<(Storage, Product, Drawer, Freezer)>(conn)
         // .get_results::<Storage>(conn)
         .map_err(internal_error)?;
@@ -323,7 +345,7 @@ pub async fn get_storage_by_id(State(state): State<AppState>, Path(id): Path<i32
 ///
 /// # Returns
 ///
-/// [Storage] that was just created, in format `application/json`
+/// The ID of the newly created storage item.
 ///
 /// # Errors
 ///
@@ -335,11 +357,11 @@ pub async fn create_storage(State(state): State<AppState>, new_storage_item: Jso
     let new_storage_item = new_storage_item.deref();
     let insert_result = diesel::insert_into(storage)
         .values(new_storage_item)
-        .returning(Storage::as_returning())
-        .get_result(conn)
+        .returning(storage_id)
+        .get_results::<i32>(conn)
         .map_err(internal_error)?;
 
-    get_storage_by_id(State(state), Path(insert_result.storage_id)).await
+    get_storage_by_id(State(state), Path(insert_result[0])).await
 }
 
 /// Update an existing storage entry: `PATCH /api/storage`.
@@ -482,7 +504,7 @@ pub async fn re_enter_storage(State(state): State<AppState>, Path(id): Path<i32>
         .load::<Storage>(conn)
         .map_err(internal_error)?;
     if update_result.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found")))
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found, update failed")))
     }
 
     Ok(())
@@ -497,17 +519,24 @@ pub async fn re_enter_storage(State(state): State<AppState>, Path(id): Path<i32>
 /// # Errors
 ///
 /// * `NotFound`: `storage_id` does not exist.
-pub async fn delete_storage(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<i32>, (StatusCode, String)> {
+pub async fn delete_storage(State(state): State<AppState>, Path(id): Path<i32>) -> Result<(), (StatusCode, String)> {
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
+    let id_check = storage
+        .filter(storage_id.eq(&id))
+        .load::<Storage>(conn)
+        .map_err(internal_error)?;
+    if id_check.is_empty() {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found, delete failed")));
+    }
     diesel::delete(storage)
         .filter(storage_id.eq(id))
         .execute(conn)
         .map_err(internal_error)?;
 
-    Ok(Json(id))
+    Ok(())
 }
 
 #[cfg(test)]

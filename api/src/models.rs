@@ -18,7 +18,7 @@ pub type ProductTuple = (i32, &'static str, i32);
 /// The expiration time is used to calculate the expiration date of the different storage items in
 /// the freezers and can be used to help the user which storage items should be consumed first.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, PartialEq, Eq)]
 #[diesel(primary_key(product_id))]
 #[diesel(table_name = products)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -63,7 +63,7 @@ pub type FreezerTuple = (i32, &'static str);
 ///
 /// This model represents the different freezers that might be in use at the user.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Identifiable, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
 #[diesel(primary_key(freezer_id))]
 #[diesel(table_name = freezers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -108,7 +108,7 @@ pub type DrawerTuple = (i32, &'static str, i32);
 ///
 /// The combination of [Self::name] and [Self::freezer_id] must be unique.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Identifiable, Selectable, Queryable, Associations, AsChangeset, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Identifiable, Selectable, Queryable, Associations, AsChangeset, Eq, PartialEq)]
 #[diesel(primary_key(drawer_id))]
 #[diesel(belongs_to(Freezer, foreign_key = freezer_id))]
 #[diesel(table_name = drawers)]
@@ -150,7 +150,7 @@ impl Drawer {
 
 
 /// **For testing purposes.** Type representing a [Storage] database entry as a tuple.
-pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32);
+pub type StorageTuple<'a> = (i32, i32, f32, &'a str, &'a str, bool, i32);
 
 /// Storage database model, matching [crate::schema::storage].
 ///
@@ -158,7 +158,7 @@ pub type StorageTuple = (i32, i32, f32, NaiveDate, Option<NaiveDate>, bool, i32)
 /// The date in will be either automatically set to the current date when not filled in, while the
 /// date out will only be set once the product is withdrawn from the freezer.
 #[typeshare]
-#[derive(Debug, Serialize, Deserialize, Identifiable, Queryable, Selectable, Associations, AsChangeset)]
+#[derive(Debug, Clone, Serialize, Deserialize, Identifiable, Queryable, Selectable, Associations, AsChangeset)]
 #[diesel(primary_key(storage_id))]
 #[diesel(table_name = storage)]
 #[diesel(belongs_to(Product, foreign_key = product_id))]
@@ -188,7 +188,12 @@ impl Storage {
     /// defined in `tests/common/db_data.rs`).
     pub fn from_tuple(storage: StorageTuple) -> Storage {
         let (storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id) = storage;
-
+        let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
+        let date_out = match date_out {
+            "" => None,
+            _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
+        };
+        
         Storage {
             storage_id,
             product_id,
@@ -203,6 +208,12 @@ impl Storage {
     /// defined in `tests/common/db_data.rs`).
     pub fn from_vec(storages: Vec<StorageTuple>) -> Vec<Storage> {
         storages.into_iter().map(|(storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id)| {
+            let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
+            let date_out = match date_out {
+                "" => None,
+                _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
+            };
+            
             Storage {
                 storage_id,
                 product_id,

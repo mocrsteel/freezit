@@ -108,7 +108,7 @@ impl Context {
             }).collect();
         let storage_feed: Vec<NewStorageItem> = db_data::STORAGE
             .into_iter()
-            .map(|(_id, prod_id, wt_grams, dt_in, av, draw_id)| {
+            .map(|(_id, prod_id, wt_grams, dt_in, _, av, draw_id)| {
                 NewStorageItem {
                     product_id: prod_id,
                     weight_grams: wt_grams,
