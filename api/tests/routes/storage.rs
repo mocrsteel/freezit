@@ -508,35 +508,159 @@ mod storage_filters {
     // Only test to check filter validation. If this works, StorageFilter.parse() is called correctly.
     // Other checks are already tested by unit testing.
     #[tokio::test]
-    async fn only_drawer_name_returns_bad_request() {}
+    async fn only_drawer_name_returns_bad_request() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri("/api/storage?drawerName=Schuif%201")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
+
+        assert_eq!(err_msg, "drawerName also requires freezerName as query parameters");
+    }
 
     #[tokio::test]
-    async fn products_returns_correct_vec() {}
+    async fn products_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let product = Product::from_tuple(PRODUCTS[3]);
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available
+            }).collect::<Vec<Storage>>()
+        ).into_iter().filter(| storage | {
+            storage.product_name.eq(&product.name)
+        }).collect::<Vec<StorageResponse>>();
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?productName={}", product.name).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "productName filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(response_vec, expected_storage_vec);
+    }
 
     #[tokio::test]
-    async fn drawer_freezer_name_returns_correct_vec() {}
+    async fn drawer_freezer_name_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let drawer = Drawer::from_tuple(DRAWERS[10]);
+        let freezer = &Freezer::from_vec(FREEZERS.to_vec()).into_iter().filter(|freezer| {
+            freezer.freezer_id.eq(&drawer.freezer_id)
+        }).collect::<Vec<Freezer>>()[0];
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available
+            }).collect::<Vec<Storage>>()
+        ).into_iter().filter(| storage | {
+            storage.drawer_name.eq(&drawer.name) && storage.freezer_name.eq(&freezer.name)
+        }).collect::<Vec<StorageResponse>>();
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?drawerName={}&freezerName={}", drawer.name, freezer.name).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "drawerName and freezerName filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(response_vec, expected_storage_vec);
+    }
 
     #[tokio::test]
-    async fn freezer_returns_correct_vec() {}
+    async fn freezer_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
 
-    #[tokio::test]
-    async fn in_before_returns_correct_vec() {}
+        let freezer = Freezer::from_tuple(FREEZERS[0]);
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available
+            }).collect::<Vec<Storage>>()
+        ).into_iter().filter(| storage | {
+            storage.freezer_name.eq(&freezer.name)
+        }).collect::<Vec<StorageResponse>>();
 
-    #[tokio::test]
-    async fn expires_after_date_returns_correct_vec() {}
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?freezerName={}", freezer.name).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
 
-    #[tokio::test]
-    async fn expires_in_days_returns_correct_vec() {}
+        assert!(response.status().is_success(), "freezerName filter request was not successful");
 
-    #[tokio::test]
-    async fn available_returns_correct_vec() {}
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
-    #[tokio::test]
-    async fn is_witdrawn_returns_correct_vec() {}
-
-    #[tokio::test]
-    async fn min_weight_returns_correct_vec() {}
-
-    #[tokio::test]
-    async fn max_weight_returns_correct_vec() {}
+        assert_eq!(response_vec, expected_storage_vec);
+    }
 }
+
+#[tokio::test]
+async fn in_before_returns_correct_vec() {
+    let ctx = Context::new(Mod::Filter.as_str());
+    let app = app(Some(ctx.database_url())).await;
+
+    let ref_storage = Storage::from_tuple(STORAGE[24]);
+    let expected_storage_vec = storage_response_from_storage_vec(
+        Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+            storage.available && storage.date_in.lt(&ref_storage.date_in)
+        }).collect::<Vec<Storage>>()
+    );
+
+    let response = app.oneshot(
+        Request::builder()
+            .uri(format!("/api/storage?inBefore={}T12:00:00+Z", ref_storage.date_in).replace(' ', "%20").as_str())
+            .body(Body::empty())
+            .unwrap()
+    ).await.unwrap();
+
+    assert!(response.status().is_success(), "beforeIn filter request was not successful");
+
+    let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+    assert_eq!(response_vec, expected_storage_vec);
+}
+
+//
+//     #[tokio::test]
+//     async fn expires_after_date_returns_correct_vec() {}
+//
+//     #[tokio::test]
+//     async fn expires_in_days_returns_correct_vec() {}
+//
+//     #[tokio::test]
+//     async fn available_returns_correct_vec() {}
+//
+//     #[tokio::test]
+//     async fn is_witdrawn_returns_correct_vec() {}
+//
+//     #[tokio::test]
+//     async fn min_weight_returns_correct_vec() {}
+//
+//     #[tokio::test]
+//     async fn max_weight_returns_correct_vec() {}
+// }
