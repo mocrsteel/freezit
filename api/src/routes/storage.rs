@@ -255,7 +255,21 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
 
     // Filters defined with default parameters.
 
-    query = query.filter(available.eq(params.available.as_ref().unwrap()))
+    // Withdrawn means it's taken out -> Date_out is no longer NULL. If default (false), then we only
+    // want rows where date_out is NULL.
+    // This should also overwrite available as this is actually the same. Code needs refactoring
+    // for this to remove available alltogether.
+    // Github Issue: https://github.com/mocrsteel/freezit/issues/6
+    let mut av = params.available.as_ref().unwrap();
+    if params.is_withdrawn.unwrap() | !av {
+        query = query.filter(date_out.is_not_null());
+        av = &false;
+    } else {
+        query = query.filter(date_out.is_null())
+        // available just stays what it was (true or false like set by the query).
+    }
+
+    query = query.filter(available.eq(av))
         .filter(weight_grams.le(params.max_weight.as_ref().unwrap()))
         .filter(weight_grams.ge(params.min_weight.as_ref().unwrap()));
 

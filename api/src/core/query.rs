@@ -67,7 +67,6 @@ mod expiration_data {
     #[test]
     fn returns_correct_data_expired() {
         let now = Local::now();
-        dbg!(now.offset().to_string().replace(':', ""));
         let date_in = DateTime::parse_from_str(
             format!("2023/01/01 13:00:00 {}", now.offset().to_string().replace(':', "")).as_str(), "%Y/%m/%d %H:%M:%S %z",
         ).unwrap();

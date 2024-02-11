@@ -2,9 +2,8 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use chrono::Local;
+use chrono::{Local, Months};
 use tower::{Service, ServiceExt};
-use tracing::instrument::WithSubscriber;
 
 use api::{
     app, models::{Drawer, Freezer, NewStorageItem, Product, Storage}, routes::storage::StorageResponse,
@@ -221,13 +220,13 @@ async fn get_storage_root_returns_all_storage() {
     // and everyting adds up like expected.
     assert_eq!(result_vec.len(), STORAGE.len() - storage_unavailable.len());
 
-    // was required to troubleshoot non matching vecs. This actually shows that order by is working or not.
+    // was required to troubleshoot non-matching vecs. This actually shows that order by is working or not.
     // Left in here as it makes sense to keep it. It's a bit more verbose which allows for better debugging.
     let result = expected_vec.iter().map(|storage| {
         result_vec[storage.storage_id as usize - 1].eq(storage)
     }).collect::<Vec<bool>>();
 
-    let false_objects = result.iter().enumerate().filter_map(|(i, ok)| {
+    let _false_objects = result.iter().enumerate().filter_map(|(i, ok)| {
         if !ok {
             Some((result_vec[i].clone(), expected_vec[i].clone()))
         } else {
@@ -235,8 +234,6 @@ async fn get_storage_root_returns_all_storage() {
         }
     })
         .collect::<Vec<(StorageResponse, StorageResponse)>>();
-
-    dbg!(&false_objects);
 
     assert_eq!(result_vec, expected_vec);
 }
@@ -339,10 +336,8 @@ async fn withdraw_updates_storage_correctly() {
 
     let (parts, body) = withdraw_response.into_parts();
     let bytes = hyper::body::to_bytes(body).await.unwrap();
-    let response_detail = std::str::from_utf8(&bytes[..]).unwrap();
+    let _response_detail = std::str::from_utf8(&bytes[..]).unwrap();
 
-    dbg!(response_detail);
-    dbg!(&parts.status.canonical_reason());
     assert_eq!(parts.status, StatusCode::OK);
 
     let check_response = ServiceExt::ready(&mut app)
@@ -420,8 +415,7 @@ async fn re_enter_updates_storage_correctly() {
         ).await.unwrap();
 
     let (parts, body) = re_enter_response.into_parts();
-    let bytes = hyper::body::to_bytes(body).await.unwrap();
-    dbg!(std::str::from_utf8(&bytes[..]).unwrap());
+    let _bytes = hyper::body::to_bytes(body).await.unwrap();
 
     assert!(parts.status.is_success(), "Re-enter was not successful");
 }
@@ -483,7 +477,7 @@ async fn delete_storage_works_correcty() {
     // let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     // For later. Did not implement a handler to check for the NotFound error from Pg.
-    // assert_eq!(err_msg, "Storage id not found, ")
+    // assert_eq!(err_msg, "Storage id not found, delete failed")
 }
 
 #[tokio::test]
@@ -498,7 +492,7 @@ async fn delete_storage_returns_error_when_not_found() {
             .body(Body::empty())
             .unwrap()
     ).await.unwrap();
-    dbg!(&delete_response.status());
+
     assert!(delete_response.status().is_server_error(), "Delete on wrong id did not return error");
 }
 
@@ -537,7 +531,7 @@ mod storage_filters {
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
                 storage.available
             }).collect::<Vec<Storage>>()
-        ).into_iter().filter(| storage | {
+        ).into_iter().filter(|storage| {
             storage.product_name.eq(&product.name)
         }).collect::<Vec<StorageResponse>>();
 
@@ -569,7 +563,7 @@ mod storage_filters {
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
                 storage.available
             }).collect::<Vec<Storage>>()
-        ).into_iter().filter(| storage | {
+        ).into_iter().filter(|storage| {
             storage.drawer_name.eq(&drawer.name) && storage.freezer_name.eq(&freezer.name)
         }).collect::<Vec<StorageResponse>>();
 
@@ -598,7 +592,7 @@ mod storage_filters {
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
                 storage.available
             }).collect::<Vec<Storage>>()
-        ).into_iter().filter(| storage | {
+        ).into_iter().filter(|storage| {
             storage.freezer_name.eq(&freezer.name)
         }).collect::<Vec<StorageResponse>>();
 
@@ -616,51 +610,216 @@ mod storage_filters {
 
         assert_eq!(response_vec, expected_storage_vec);
     }
+
+
+    #[tokio::test]
+    async fn in_before_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let ref_storage = Storage::from_tuple(STORAGE[24]);
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available && storage.date_in.lt(&ref_storage.date_in)
+            }).collect::<Vec<Storage>>()
+        );
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?inBefore={}T12:00:00+Z", ref_storage.date_in).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "beforeIn filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(response_vec, expected_storage_vec);
+    }
+
+    #[tokio::test]
+    async fn expires_after_date_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        // Sample storage based expiration date to make checking the result easier.
+        let ref_storage = Storage::from_tuple(STORAGE[0]);
+        let ref_product = &Product::from_vec(PRODUCTS.to_vec())
+            .into_iter().filter(|product| {
+            product.product_id.eq(&ref_storage.product_id)
+        }).collect::<Vec<Product>>()[0];
+        let expiration_date = ref_storage.date_in.checked_add_months(Months::new(ref_product.expiration_months as u32)).unwrap();
+
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available
+            }).collect::<Vec<Storage>>()
+        ).into_iter().filter(|storage| {
+            storage.expiration_date.ge(&expiration_date)
+        }).collect::<Vec<StorageResponse>>();
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?expiresAfterDate={}T12:00:00+Z", expiration_date).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "expiresAfterDate filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(response_vec, expected_storage_vec);
+    }
+    #[tokio::test]
+    async fn expires_before_date_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        // Sample storage based expiration date to make checking the result easier.
+        let ref_storage = Storage::from_tuple(STORAGE[10]);
+        let ref_product = &Product::from_vec(PRODUCTS.to_vec())
+            .into_iter().filter(|product| {
+            product.product_id.eq(&ref_storage.product_id)
+        }).collect::<Vec<Product>>()[0];
+        let expiration_date = ref_storage.date_in.checked_add_months(Months::new(ref_product.expiration_months as u32)).unwrap();
+
+        let expected_storage_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
+                storage.available
+            }).collect::<Vec<Storage>>()
+        ).into_iter().filter(|storage| {
+            storage.expiration_date.le(&expiration_date)
+        }).collect::<Vec<StorageResponse>>();
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri(format!("/api/storage?expiresBeforeDate={}T12:00:00+Z", expiration_date).replace(' ', "%20").as_str())
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "expiresBeforeDate filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(response_vec, expected_storage_vec);
+    }
+
+
+    // Unsure how to test this one properly. Would require passing a fixed date as current time to the test.
+    // #[tokio::test]
+    // async fn expires_in_days_returns_correct_vec() {
+    //
+    // }
+
+    #[tokio::test]
+    async fn not_available_returns_correct_vec() {
+        // Only not available as the default get_storage query only returns the available storage
+        // items.
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let expected_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
+                !storage.available
+            }).collect::<Vec<Storage>>()
+        );
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri("/api/storage?available=false")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "available filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(result_vec, expected_vec);
+    }
+
+    #[tokio::test]
+    async fn is_withdrawn_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let expected_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
+                storage.date_out.is_some()
+            }).collect::<Vec<Storage>>()
+        );
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri("/api/storage?isWithdrawn=true")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "isWithdrawn filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(result_vec, expected_vec);
+    }
+
+    #[tokio::test]
+    async fn min_weight_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let expected_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
+                storage.weight_grams >= 500.0 && storage.date_out.is_none()
+            }).collect::<Vec<Storage>>()
+        );
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri("/api/storage?minWeight=500.0")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "minWeight filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(result_vec, expected_vec);
+    }
+
+    #[tokio::test]
+    async fn max_weight_returns_correct_vec() {
+        let ctx = Context::new(Mod::Filter.as_str());
+        let app = app(Some(ctx.database_url())).await;
+
+        let expected_vec = storage_response_from_storage_vec(
+            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
+                storage.weight_grams <= 400.0
+            }).collect::<Vec<Storage>>()
+        );
+
+        let response = app.oneshot(
+            Request::builder()
+                .uri("/api/storage?maxWeight=400.0")
+                .body(Body::empty())
+                .unwrap()
+        ).await.unwrap();
+
+        assert!(response.status().is_success(), "maxWeight filter request was not successful");
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
+
+        assert_eq!(result_vec, expected_vec);
+    }
 }
-
-#[tokio::test]
-async fn in_before_returns_correct_vec() {
-    let ctx = Context::new(Mod::Filter.as_str());
-    let app = app(Some(ctx.database_url())).await;
-
-    let ref_storage = Storage::from_tuple(STORAGE[24]);
-    let expected_storage_vec = storage_response_from_storage_vec(
-        Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-            storage.available && storage.date_in.lt(&ref_storage.date_in)
-        }).collect::<Vec<Storage>>()
-    );
-
-    let response = app.oneshot(
-        Request::builder()
-            .uri(format!("/api/storage?inBefore={}T12:00:00+Z", ref_storage.date_in).replace(' ', "%20").as_str())
-            .body(Body::empty())
-            .unwrap()
-    ).await.unwrap();
-
-    assert!(response.status().is_success(), "beforeIn filter request was not successful");
-
-    let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
-
-    assert_eq!(response_vec, expected_storage_vec);
-}
-
-//
-//     #[tokio::test]
-//     async fn expires_after_date_returns_correct_vec() {}
-//
-//     #[tokio::test]
-//     async fn expires_in_days_returns_correct_vec() {}
-//
-//     #[tokio::test]
-//     async fn available_returns_correct_vec() {}
-//
-//     #[tokio::test]
-//     async fn is_witdrawn_returns_correct_vec() {}
-//
-//     #[tokio::test]
-//     async fn min_weight_returns_correct_vec() {}
-//
-//     #[tokio::test]
-//     async fn max_weight_returns_correct_vec() {}
-// }
