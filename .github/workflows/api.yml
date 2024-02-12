@@ -1,15 +1,19 @@
 name: Freezit API CI testing
 on:
-  [push, pull_request]
-  
+  push:
+    branches:
+      - main
+  pull_request:
+      branches:
+        - main
 
 jobs:
   # Label of the container job
-  api_build_test_cov:
-    name: Build, test and report code coverage
+  build:
+    name: Build, Test and Coverage
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Install postgres
         run: |

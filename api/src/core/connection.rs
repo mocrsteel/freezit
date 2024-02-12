@@ -2,6 +2,7 @@
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+#[cfg(not(test))]
 use dotenvy::dotenv;
 
 use std::env;
@@ -13,9 +14,10 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 /// Database connection. Can be set using a String for end-to-end testing.
 pub fn establish_connection(db_uri: Option<String>) -> PgConnection {
     let database_url = db_uri.unwrap_or_else(|| {
+        #[cfg(not(test))]
         dotenv().ok();
         env::var("DATABASE_URL").expect("DATABASE_URL must be set")
-    }) ;
+    });
 
     // Database uri validity check
     let uri_parts = RegexSet::new([
@@ -56,4 +58,48 @@ pub fn establish_connection(db_uri: Option<String>) -> PgConnection {
                 _ => panic!("Error connecting to database {}", database_url),
             }
         )
+}
+#[cfg(test)]
+mod uri_parsing {
+    use super::*;
+    use std::env;
+    #[test]
+    #[should_panic(expected = "DATABASE_URL must be set")]
+    fn database_url_not_set() {
+        if env::var("DATABASE_URL").is_ok() {
+            env::remove_var("DATABASE_URL");
+        }
+        assert!(env::var("DATABASE_URL").is_err());
+
+        establish_connection(None);
+    }
+    #[test]
+    #[should_panic(expected = "DATABASE_URL does not contain 'postgres:// prefix.")]
+    fn postgres_prefix_missing() {
+        establish_connection(Some(String::from("http://postgres_user:postgres_pw@localhost/db_name?connect_timeout=20")));
+    }
+
+    #[test]
+    #[should_panic(expected = "Both username and password required in DATABASE_URL.")]
+    fn username_password_not_set() {
+        establish_connection(Some(String::from("postgres://postgres_pw@localhost/freezit?connect_timeout=20")));
+    }
+
+    #[test]
+    #[should_panic(expected = "'localhost' or IP address required in DATABASE_URL.")]
+    fn host_address_not_set_correctly() {
+        establish_connection(Some(String::from("postgres://postgres_user:postgres_pw@other_host/freezit?connect_timeout=20")));
+    }
+
+    #[test]
+    #[should_panic(expected = "Timeout required in DATABASE_URL: dbname?connect_timeout=<u32>" )]
+    fn timeout_not_set() {
+        establish_connection(Some(String::from("postgres://postgres_user:postgres_pw@localhost/freezit")));
+    }
+
+    #[test]
+    #[should_panic(expected = "Connecting to database 'postgres' is not allowed.")]
+    fn db_set_to_postgres() {
+        establish_connection(Some(String::from("postgres://postgres_user:postgres_pw@localhost/postgres?connect_timeout=20")));
+    }
 }
