@@ -2,7 +2,7 @@ use crate::common::db_data::PRODUCTS;
 use crate::common::db::Context;
 use api::app;
 
-use log::{error, info};
+use log::{info};
 use axum::{
     body::Body,
     http::Request,

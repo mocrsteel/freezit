@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::sync::atomic::Ordering;
-
+use regex::Regex;
 use diesel::prelude::*;
 use diesel::{Connection, PgConnection, RunQueryDsl};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -31,7 +31,7 @@ impl Context {
         let base_url = std::env::var("DATABASE_BASE_URL")
             .expect("DATABASE_BASE_URL expected for integration testing.");
 
-        let db_num = DB_COUNT.fetch_add(1, Ordering::SeqCst);
+        let db_num = DB_COUNT.fetch_add(1, Ordering::Acquire);
         let db_name = format!("db_{}_{}", db_num, ctx);
         let postgres_url = format!("{}/postgres?connect_timeout=5", base_url);
 
@@ -39,10 +39,19 @@ impl Context {
         let conn = &mut PgConnection::establish(&postgres_url)
             .expect("Cannot connect to postgres database.");
 
+        let db_exists_error = Regex::new("^database \".*\" already exists$").unwrap();
         let query = diesel::sql_query(format!("CREATE DATABASE {}", db_name.as_str()));
-        query.execute(conn).unwrap_or_else(|err| {
-            error!("Error creating database {}: {}", db_name, err);
-            panic!("Could not create database {}", db_name)
+        query.clone().execute(conn).unwrap_or_else(|err| {
+            if db_exists_error.is_match(err.to_string().as_str()) {
+                // Database wasn't dropped properly after previous test run.
+                diesel::sql_query(format!("DROP DATABASE {}", db_name.as_str()))
+                    .execute(conn)
+                    .unwrap();
+                query.execute(conn).unwrap()
+            } else {
+                error!("Error creating database {}: {}", db_name, err);
+                panic!("Could not create database {}: {}", db_name, err)
+            }
         });
 
         info!(target: LOG_TARGET, "Database {} successfully created", db_name);
@@ -108,13 +117,21 @@ impl Context {
             }).collect();
         let storage_feed: Vec<NewStorageItem> = db_data::STORAGE
             .into_iter()
-            .map(|(_id, prod_id, wt_grams, dt_in, av, draw_id)| {
+            .map(|(_id, prod_id, wt_grams, dt_in, _, av, draw_id)| {
                 NewStorageItem {
                     product_id: prod_id,
                     weight_grams: wt_grams,
                     date_in: NaiveDate::parse_from_str(dt_in, "%Y-%m-%d").unwrap(),
                     available: av,
                     drawer_id: draw_id,
+                }
+            }).collect();
+        let storage_withdrawn: Vec<(i32, &str)> = db_data::STORAGE
+            .into_iter()
+            .filter_map(|(id, _prod_id, _wt_grams, _dt_in, dt_out, _av, _draw_id)| {
+                match dt_out {
+                    "" => None,
+                    _ => Some((id, dt_out)),
                 }
             }).collect();
 
@@ -159,6 +176,17 @@ impl Context {
                 error!("Error loading storage items in '{}' {}", db_name, err);
                 panic!("Error loading storage items into database {}", db_name)
             });
+
+        for (id, dt_out) in storage_withdrawn {
+            let dt_out_naive = NaiveDate::parse_from_str(dt_out, "%Y-%m-%d").unwrap();
+            diesel::update(stor::storage)
+                .filter(stor::storage_id.eq(id))
+                .set(stor::date_out.eq(dt_out_naive))
+                .execute(conn)
+                .unwrap_or_else(|err| {
+                    panic!("Error updating date out for storage item {} to {}: {}", id, dt_out, err);
+                });
+        }
     }
 }
 

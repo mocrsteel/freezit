@@ -61,8 +61,6 @@ pub async fn get_drawers(State(state): State<AppState>, params: Query<DrawerQuer
     let conn = &mut establish_connection(state.db_url);
     // Set up boxed query to add pieces depending on query parameters.
     let mut query = drawers.into_boxed();
-    let other = &params.0;
-
     let DrawerQueryOptions { drawer_id: d_id, drawer_name: d_name, freezer_id: f_id } = params.deref();
 
     match (d_id, d_name, f_id) {
