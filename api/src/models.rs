@@ -150,7 +150,7 @@ impl Drawer {
 
 
 /// **For testing purposes.** Type representing a [Storage] database entry as a tuple.
-pub type StorageTuple<'a> = (i32, i32, f32, &'a str, &'a str, bool, i32);
+pub type StorageTuple<'a> = (i32, i32, f32, &'a str, &'a str, i32);
 
 /// Storage database model, matching [crate::schema::storage].
 ///
@@ -179,14 +179,12 @@ pub struct Storage {
     pub date_in: NaiveDate,
     /// Date taken out of storage.
     pub date_out: Option<NaiveDate>,
-    /// Whether or not the product is still in storage.
-    pub available: bool,
 }
 impl Storage {
     /// **For testing purposes.** Creates a storage item from a single tuple (statically
     /// defined in `tests/common/db_data.rs`).
     pub fn from_tuple(storage: StorageTuple) -> Storage {
-        let (storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id) = storage;
+        let (storage_id, product_id, weight_grams, date_in, date_out, drawer_id) = storage;
         let date_in = NaiveDate::parse_from_str(date_in, "%Y-%m-%d").unwrap();
         // let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
         let date_out = match date_out {
@@ -201,14 +199,13 @@ impl Storage {
             weight_grams,
             date_in,
             date_out,
-            available,
             drawer_id,
         }
     }
     /// **For testing purposes.** Creates a vector of storage items from a vector of tuples (statically
     /// defined in `tests/common/db_data.rs`).
     pub fn from_vec(storages: Vec<StorageTuple>) -> Vec<Storage> {
-        storages.into_iter().map(|(storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id)| {
+        storages.into_iter().map(|(storage_id, product_id, weight_grams, date_in, date_out,drawer_id)| {
             let date_in = NaiveDate::parse_from_str(date_in, "%Y-%m-%d").unwrap();
             // let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
             let date_out = match date_out {
@@ -223,7 +220,6 @@ impl Storage {
                 weight_grams,
                 date_in,
                 date_out,
-                available,
                 drawer_id,
             }
         }).collect()
@@ -236,9 +232,7 @@ impl PartialEq for Storage {
             self.product_id == other.product_id &&
             self.drawer_id == other.drawer_id &&
             self.date_in == other.date_in &&
-            self.date_out == other.date_out &&
-            self.available == other.available
-
+            self.date_out == other.date_out
     }
 }
 
@@ -270,8 +264,6 @@ pub struct NewStorageItem {
     pub weight_grams: f32,
     /// **Required**: Date in
     pub date_in: NaiveDate,
-    /// **Required**: Availability, should be True on entry.
-    pub available: bool,
 }
 impl NewStorageItem {
     /// Create new storage item. `date_in` is accepted as [Local] [DateTime].
@@ -282,7 +274,6 @@ impl NewStorageItem {
             drawer_id,
             weight_grams,
             date_in,
-            available: true
         }
     }
 }
@@ -290,10 +281,9 @@ impl NewStorageItem {
 /// Allows storage availability update. Required to be able to set date_out to `NULL`.
 #[derive(Debug, Clone, Deserialize, Serialize, AsChangeset)]
 #[diesel(table_name = storage)]
+#[diesel(treat_none_as_null = true)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateStorageAvailability {
-    /// [Storage] : field `available`
-    pub available: bool,
     /// [Storage] : field `date_out`
     pub date_out: Option<NaiveDate>,
 }

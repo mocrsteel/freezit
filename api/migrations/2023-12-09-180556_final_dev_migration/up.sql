@@ -27,6 +27,5 @@ CREATE TABLE IF NOT EXISTS storage
     drawer_id    INT     NOT NULL REFERENCES drawers (drawer_id) ON DELETE CASCADE,
     weight_grams float4  NOT NULL,
     date_in      DATE    NOT NULL DEFAULT (now()),
-    date_out     DATE,
-    available    BOOLEAN NOT NULL DEFAULT (TRUE)
+    date_out     DATE
 );

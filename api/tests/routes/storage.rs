@@ -144,7 +144,7 @@ async fn creates_storage_correctly() {
 
     assert!(
         create_response.status().is_success(),
-        "Expected succesful storage creation"
+        "Expected successful storage creation"
     );
 
     let bytes = hyper::body::to_bytes(create_response.into_body())
@@ -194,11 +194,11 @@ async fn get_storage_root_returns_all_storage() {
 
     let storage_available = Storage::from_vec(STORAGE.to_vec())
         .into_iter()
-        .filter(|storage| storage.available)
+        .filter(|storage| storage.date_out.is_none())
         .collect::<Vec<Storage>>();
-    let storage_unavailable = Storage::from_vec(STORAGE.to_vec())
+    let storage_withdrawn = Storage::from_vec(STORAGE.to_vec())
         .into_iter()
-        .filter(|storage| !storage.available)
+        .filter(|storage| storage.date_out.is_some())
         .collect::<Vec<Storage>>();
     let expected_vec = storage_response_from_storage_vec(storage_available);
     let response = app
@@ -217,8 +217,8 @@ async fn get_storage_root_returns_all_storage() {
 
     assert_eq!(result_vec.len(), expected_vec.len());
     // The return should not contain the unavailable storage, but we also want to check we still have enough 
-    // and everyting adds up like expected.
-    assert_eq!(result_vec.len(), STORAGE.len() - storage_unavailable.len());
+    // and everything adds up like expected.
+    assert_eq!(result_vec.len(), STORAGE.len() - storage_withdrawn.len());
 
     // was required to troubleshoot non-matching vecs. This actually shows that order by is working or not.
     // Left in here as it makes sense to keep it. It's a bit more verbose which allows for better debugging.
@@ -415,7 +415,8 @@ async fn re_enter_updates_storage_correctly() {
         ).await.unwrap();
 
     let (parts, body) = re_enter_response.into_parts();
-    let _bytes = hyper::body::to_bytes(body).await.unwrap();
+    let bytes = hyper::body::to_bytes(body).await.unwrap();
+    let _err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert!(parts.status.is_success(), "Re-enter was not successful");
 }
@@ -444,7 +445,7 @@ async fn re_enter_storage_returns_error_when_not_found() {
 }
 
 #[tokio::test]
-async fn delete_storage_works_correcty() {
+async fn delete_storage_works_correctly() {
     let ctx = Context::new(Mod::Delete.as_str());
     let mut app = app(Some(ctx.database_url())).await;
 
@@ -529,7 +530,7 @@ mod storage_filters {
         let product = Product::from_tuple(PRODUCTS[3]);
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available
+                storage.date_out.is_none()
             }).collect::<Vec<Storage>>()
         ).into_iter().filter(|storage| {
             storage.product_name.eq(&product.name)
@@ -561,7 +562,7 @@ mod storage_filters {
         }).collect::<Vec<Freezer>>()[0];
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available
+                storage.date_out.is_none()
             }).collect::<Vec<Storage>>()
         ).into_iter().filter(|storage| {
             storage.drawer_name.eq(&drawer.name) && storage.freezer_name.eq(&freezer.name)
@@ -590,7 +591,7 @@ mod storage_filters {
         let freezer = Freezer::from_tuple(FREEZERS[0]);
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available
+                storage.date_out.is_none()
             }).collect::<Vec<Storage>>()
         ).into_iter().filter(|storage| {
             storage.freezer_name.eq(&freezer.name)
@@ -620,7 +621,7 @@ mod storage_filters {
         let ref_storage = Storage::from_tuple(STORAGE[24]);
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available && storage.date_in.lt(&ref_storage.date_in)
+                storage.date_out.is_none() && storage.date_in.lt(&ref_storage.date_in)
             }).collect::<Vec<Storage>>()
         );
 
@@ -654,7 +655,7 @@ mod storage_filters {
 
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available
+                storage.date_out.is_none()
             }).collect::<Vec<Storage>>()
         ).into_iter().filter(|storage| {
             storage.expiration_date.ge(&expiration_date)
@@ -689,7 +690,7 @@ mod storage_filters {
 
         let expected_storage_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(|storage| {
-                storage.available
+                storage.date_out.is_none()
             }).collect::<Vec<Storage>>()
         ).into_iter().filter(|storage| {
             storage.expiration_date.le(&expiration_date)
@@ -716,34 +717,6 @@ mod storage_filters {
     // async fn expires_in_days_returns_correct_vec() {
     //
     // }
-
-    #[tokio::test]
-    async fn not_available_returns_correct_vec() {
-        // Only not available as the default get_storage query only returns the available storage
-        // items.
-        let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
-
-        let expected_vec = storage_response_from_storage_vec(
-            Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
-                !storage.available
-            }).collect::<Vec<Storage>>()
-        );
-
-        let response = app.oneshot(
-            Request::builder()
-                .uri("/api/storage?available=false")
-                .body(Body::empty())
-                .unwrap()
-        ).await.unwrap();
-
-        assert!(response.status().is_success(), "available filter request was not successful");
-
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
-        let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
-
-        assert_eq!(result_vec, expected_vec);
-    }
 
     #[tokio::test]
     async fn is_withdrawn_returns_correct_vec() {

@@ -34,7 +34,6 @@ diesel::table! {
         weight_grams -> Float4,
         date_in -> Date,
         date_out -> Nullable<Date>,
-        available -> Bool,
     }
 }
 
