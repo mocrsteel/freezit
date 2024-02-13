@@ -83,7 +83,7 @@ mod migrations {
             let mut ctx = Context::new(CTX);
             let conn = &mut ctx.establish_connection();
 
-            let storage_result = diesel::sql_query("SELECT storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id FROM storage;")
+            let storage_result = diesel::sql_query("SELECT storage_id, product_id, weight_grams, date_in, date_out, drawer_id FROM storage;")
                 .execute(conn)
                 .is_ok();
 

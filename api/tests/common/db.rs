@@ -117,18 +117,17 @@ impl Context {
             }).collect();
         let storage_feed: Vec<NewStorageItem> = db_data::STORAGE
             .into_iter()
-            .map(|(_id, prod_id, wt_grams, dt_in, _, av, draw_id)| {
+            .map(|(_id, prod_id, wt_grams, dt_in, _, draw_id)| {
                 NewStorageItem {
                     product_id: prod_id,
                     weight_grams: wt_grams,
                     date_in: NaiveDate::parse_from_str(dt_in, "%Y-%m-%d").unwrap(),
-                    available: av,
                     drawer_id: draw_id,
                 }
             }).collect();
         let storage_withdrawn: Vec<(i32, &str)> = db_data::STORAGE
             .into_iter()
-            .filter_map(|(id, _prod_id, _wt_grams, _dt_in, dt_out, _av, _draw_id)| {
+            .filter_map(|(id, _prod_id, _wt_grams, _dt_in, dt_out, _draw_id)| {
                 match dt_out {
                     "" => None,
                     _ => Some((id, dt_out)),

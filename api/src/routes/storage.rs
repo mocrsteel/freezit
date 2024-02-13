@@ -18,7 +18,8 @@
 //!     "weightGrams": 525.3,
 //!     "expirationDate": "2024-08-01",
 //!     "expiresInDays": 128,
-//!     "inStorageSince": "2023-08-01"
+//!     "inStorageSince": "2023-08-01",
+//!     "outStorageSince: "2024-08-01",
 //! }
 //! ```
 //! ## Possible queries
@@ -26,7 +27,7 @@
 //! Query by:
 //!
 //! * storage_id
-//! * storage in generall, but filtered on possible filters given in [StorageFilter]. All are to be defined in a query parameter: `/api/storage?productName=Brocoli`.
+//! * storage in general, but filtered on possible filters given in [StorageFilter]. All are to be defined in a query parameter: `/api/storage?productName=Brocoli`.
 //!
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -81,9 +82,6 @@ pub struct StorageFilter {
     pub expires_after_date: Option<NaiveDate>,
     /// Date before which products expire, in format RFC3339: `<YYYY>-<MM>-<DD>T<HH>:<MM>:<SS>Z`, e.g. `2023-12-23T13:00:00Z`.
     pub expires_before_date: Option<NaiveDate>,
-    #[serde(default = "available_default")]
-    /// Select available products only. `true` or `false`
-    pub available: Option<bool>,
     /// Selects all products that have a date_out specified (i.e. are withdrawn from the freezer). Defaults to false.
     #[serde(default = "is_withdrawn_default")]
     pub is_withdrawn: Option<bool>,
@@ -152,6 +150,8 @@ pub struct StorageResponse {
     pub expiration_date: NaiveDate,
     /// Date of entry, renamed for frontend readability: [Storage] `date_in`.
     pub in_storage_since: NaiveDate,
+    /// Date of withdrawal. Is `None` when still in storage.
+    pub out_storage_since: Option<NaiveDate>,
 }
 
 impl StorageResponse {
@@ -170,6 +170,7 @@ impl StorageResponse {
                     expires_in_days: expiration_data.expires_in_days,
                     expiration_date: expiration_data.date_expires,
                     in_storage_since: stor.date_in,
+                    out_storage_since: stor.date_out,
                 }
             })
             .collect::<Vec<StorageResponse>>()
@@ -185,6 +186,7 @@ impl PartialEq for StorageResponse {
         && self.expires_in_days == other.expires_in_days
         && self.expiration_date == other.expiration_date
         && self.in_storage_since == other.in_storage_since
+        && self.out_storage_since == other.out_storage_since
     }
 }
 
@@ -194,10 +196,6 @@ fn weight_min_default() -> Option<f32> {
 
 fn weight_max_default() -> Option<f32> {
     Some(1000.0)
-}
-
-fn available_default() -> Option<bool> {
-    Some(true)
 }
 
 fn is_withdrawn_default() -> Option<bool> {
@@ -215,7 +213,7 @@ fn is_withdrawn_default() -> Option<bool> {
 /// * `expiresInMonths=<i32>`: Time until or before which products expire.
 /// * `expiresAfterDate=<DateTime String>`: Date after which products expire.
 /// * `expiresBeforeDate=<DateTime String>`: Date before which products expire.
-/// * `available=<bool>` **(defaults to true)**: Product is available or not.
+/// * `isWithdrawn=<bool>` **(defaults to false)**: Product has been withdrawn or not.
 /// * `minWeight=<f32>` **(defaults to 0.0)**: Minimum product weight filter, in grams.
 /// * `maxWeight=<f32>` **(defaults to 100000.0)**: Maximum product weight filter, in grams.
 ///
@@ -257,19 +255,13 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
 
     // Withdrawn means it's taken out -> Date_out is no longer NULL. If default (false), then we only
     // want rows where date_out is NULL.
-    // This should also overwrite available as this is actually the same. Code needs refactoring
-    // for this to remove available alltogether.
-    // Github Issue: https://github.com/mocrsteel/freezit/issues/6
-    let mut av = params.available.as_ref().unwrap();
-    if params.is_withdrawn.unwrap() | !av {
+    if params.is_withdrawn.unwrap() {
         query = query.filter(date_out.is_not_null());
-        av = &false;
     } else {
         query = query.filter(date_out.is_null())
-        // available just stays what it was (true or false like set by the query).
     }
 
-    query = query.filter(available.eq(av))
+    query = query
         .filter(weight_grams.le(params.max_weight.as_ref().unwrap()))
         .filter(weight_grams.ge(params.min_weight.as_ref().unwrap()));
 
@@ -435,7 +427,6 @@ pub async fn update_storage(State(state): State<AppState>, updated_storage_front
         weight_grams: updated_storage_frontend.weight_grams,
         date_in: updated_storage_frontend.in_storage_since,
         date_out: storage_entry.date_out,
-        available: storage_entry.available,
     };
 
     let update_result = diesel::update(storage)
@@ -453,8 +444,9 @@ pub async fn update_storage(State(state): State<AppState>, updated_storage_front
         drawer_name: drawer.name.clone(),
         weight_grams: update_result.weight_grams,
         in_storage_since: update_result.date_in,
+        out_storage_since: update_result.date_out,
         expires_in_days: expiration.expires_in_days,
-        expiration_date: expiration.date_expires
+        expiration_date: expiration.date_expires,
     };
 
     Ok(Json(vec![response]))
@@ -480,10 +472,7 @@ pub async fn withdraw_storage(State(state): State<AppState>, Path(id): Path<i32>
     let today = Local::now().date_naive();
     let update_result = diesel::update(storage)
         .filter(storage_id.eq(id))
-        .set((
-            available.eq(false),
-            date_out.eq(today)
-        ))
+        .set(date_out.eq(today))
         .load::<Storage>(conn)
         .map_err(internal_error)?;
     if update_result.is_empty() {
@@ -512,7 +501,6 @@ pub async fn re_enter_storage(State(state): State<AppState>, Path(id): Path<i32>
     let update_result = diesel::update(storage)
         .filter(storage_id.eq(id))
         .set(&UpdateStorageAvailability {
-            available: true,
             date_out: None,
         })
         .load::<Storage>(conn)
@@ -571,7 +559,6 @@ mod storage_filter {
                 expires_in_days: None,
                 expires_after_date: None,
                 expires_before_date: None,
-                available: None,
                 is_withdrawn: None,
                 min_weight: None,
                 max_weight: None
@@ -594,7 +581,6 @@ mod storage_filter {
                 expires_in_days: None,
                 expires_after_date: Some(yesterday),
                 expires_before_date: None,
-                available: None,
                 is_withdrawn: None,
                 min_weight: None,
                 max_weight: None
@@ -617,7 +603,6 @@ mod storage_filter {
                 expires_in_days: None,
                 expires_after_date: Some(today),
                 expires_before_date: Some(yesterday),
-                available: None,
                 is_withdrawn: None,
                 min_weight: None,
                 max_weight: None
@@ -637,7 +622,6 @@ mod storage_filter {
                 expires_in_days: None,
                 expires_after_date: None,
                 expires_before_date: None,
-                available: None,
                 is_withdrawn: None,
                 min_weight: Some(500.),
                 max_weight: Some(100.)
@@ -664,7 +648,6 @@ mod storage_response {
                 weight_grams: 4.0,
                 date_in: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
                 date_out: None,
-                available: true
             },
             Product {
                 product_id: 2,
@@ -691,6 +674,7 @@ mod storage_response {
             expires_in_days: 0,
             expiration_date: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
             in_storage_since: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+            out_storage_since: None,
         };
         let stor = &storage_response[0];
 
@@ -702,5 +686,6 @@ mod storage_response {
         assert_eq!(stor.weight_grams, expected_storage_response.weight_grams);
         assert_eq!(stor.in_storage_since, expected_storage_response.in_storage_since);
         assert_eq!(stor.expiration_date, expected_storage_response.expiration_date);
+        assert_eq!(stor.out_storage_since, expected_storage_response.out_storage_since);
     }
 }
