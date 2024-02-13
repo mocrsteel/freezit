@@ -128,7 +128,7 @@ async fn creates_storage_correctly() {
         .collect::<Vec<Freezer>>()[0];
 
     let new_storage =
-        NewStorageItem::from(product.product_id, drawer.drawer_id, 325.5, Local::now());
+        NewStorageItem::from(product.product_id, drawer.drawer_id, 325.5, Local::now().date_naive());
 
     let create_response = ServiceExt::ready(&mut app)
         .await.unwrap()
@@ -182,7 +182,7 @@ async fn creates_storage_correctly() {
     assert_eq!(storage_response.drawer_name, drawer.name);
     assert_eq!(
         storage_response.in_storage_since,
-        Local::now().naive_utc().date()
+        Local::now().date_naive()
     );
     assert!(storage_response.weight_grams - 325.5 <= 1e-6);
 }
@@ -626,7 +626,7 @@ mod storage_filters {
 
         let response = app.oneshot(
             Request::builder()
-                .uri(format!("/api/storage?inBefore={}T12:00:00+Z", ref_storage.date_in).replace(' ', "%20").as_str())
+                .uri(format!("/api/storage?inBefore={}", ref_storage.date_in).replace(' ', "%20").as_str())
                 .body(Body::empty())
                 .unwrap()
         ).await.unwrap();
@@ -662,7 +662,7 @@ mod storage_filters {
 
         let response = app.oneshot(
             Request::builder()
-                .uri(format!("/api/storage?expiresAfterDate={}T12:00:00+Z", expiration_date).replace(' ', "%20").as_str())
+                .uri(format!("/api/storage?expiresAfterDate={}", expiration_date).replace(' ', "%20").as_str())
                 .body(Body::empty())
                 .unwrap()
         ).await.unwrap();
@@ -697,7 +697,7 @@ mod storage_filters {
 
         let response = app.oneshot(
             Request::builder()
-                .uri(format!("/api/storage?expiresBeforeDate={}T12:00:00+Z", expiration_date).replace(' ', "%20").as_str())
+                .uri(format!("/api/storage?expiresBeforeDate={}", expiration_date).replace(' ', "%20").as_str())
                 .body(Body::empty())
                 .unwrap()
         ).await.unwrap();

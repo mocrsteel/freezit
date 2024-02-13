@@ -33,7 +33,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use chrono::{DateTime, Local, NaiveDate, Utc};
+use chrono::{NaiveDate, Local};
 use diesel::prelude::*;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -74,13 +74,13 @@ pub struct StorageFilter {
     pub freezer_name: Option<String>,
     /// Date in format [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339): `<YYYY>-<MM>-<DD>T<HH>:<MM>:<SS>Z`
     /// (Z because the date is parsed to local!). E.g.: `2023-12-23T13:00:00Z`.
-    pub in_before: Option<DateTime<Local>>,
+    pub in_before: Option<NaiveDate>,
     /// Days until which the product expires (and products that expire sooner)
     pub expires_in_days: Option<i32>,
     /// Date after which products expire, in format RFC3339: `<YYYY>-<MM>-<DD>T<HH>:<MM>:<SS>Z`, e.g. `2023-12-23T13:00:00Z`.
-    pub expires_after_date: Option<DateTime<Local>>,
+    pub expires_after_date: Option<NaiveDate>,
     /// Date before which products expire, in format RFC3339: `<YYYY>-<MM>-<DD>T<HH>:<MM>:<SS>Z`, e.g. `2023-12-23T13:00:00Z`.
-    pub expires_before_date: Option<DateTime<Local>>,
+    pub expires_before_date: Option<NaiveDate>,
     #[serde(default = "available_default")]
     /// Select available products only. `true` or `false`
     pub available: Option<bool>,
@@ -168,7 +168,7 @@ impl StorageResponse {
                     drawer_name: draw.name,
                     weight_grams: stor.weight_grams,
                     expires_in_days: expiration_data.expires_in_days,
-                    expiration_date: expiration_data.date_expires.date_naive(),
+                    expiration_date: expiration_data.date_expires,
                     in_storage_since: stor.date_in,
                 }
             })
@@ -249,7 +249,7 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
         }
     }
     if params.in_before.is_some() {
-        let date_max_naive = params.in_before.unwrap().naive_utc().date();
+        let date_max_naive = params.in_before.unwrap();
         query = query.filter(date_in.lt(date_max_naive))
     }
 
@@ -295,7 +295,7 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
     };
     let zipped_result = match params.expires_after_date {
         Some(date) => {
-            let max_expiration_date: Arc<NaiveDate> = Arc::new(date.naive_local().date());
+            let max_expiration_date: Arc<NaiveDate> = Arc::new(date);
             zipped_result
                 .into_iter()
                 .filter(move |data| {
@@ -307,7 +307,7 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
     };
     let zipped_result = match params.expires_before_date {
         Some(date) => {
-            let date_before: Arc<NaiveDate> = Arc::new(date.naive_local().date());
+            let date_before: Arc<NaiveDate> = Arc::new(date);
             zipped_result
                 .into_iter()
                 .filter(move |data| {
@@ -454,7 +454,7 @@ pub async fn update_storage(State(state): State<AppState>, updated_storage_front
         weight_grams: update_result.weight_grams,
         in_storage_since: update_result.date_in,
         expires_in_days: expiration.expires_in_days,
-        expiration_date: expiration.date_expires.naive_local().date()
+        expiration_date: expiration.date_expires
     };
 
     Ok(Json(vec![response]))
@@ -477,12 +477,12 @@ pub async fn withdraw_storage(State(state): State<AppState>, Path(id): Path<i32>
 
     let conn = &mut establish_connection(state.db_url);
 
-    let date_now_utc = Utc::now().date_naive();
+    let today = Local::now().date_naive();
     let update_result = diesel::update(storage)
         .filter(storage_id.eq(id))
         .set((
             available.eq(false),
-            date_out.eq(date_now_utc)
+            date_out.eq(today)
         ))
         .load::<Storage>(conn)
         .map_err(internal_error)?;
@@ -584,13 +584,13 @@ mod storage_filter {
 
         #[test]
         fn in_before_ge_date_expires_returns_error() {
-            let now = Local::now();
-            let yesterday = now.checked_sub_days(Days::new(1)).unwrap();
+            let today = Local::now().date_naive();
+            let yesterday = today.checked_sub_days(Days::new(1)).unwrap();
             let storage_filter = StorageFilter {
                 product_name: None,
                 drawer_name: None,
                 freezer_name: None,
-                in_before: Some(now),
+                in_before: Some(today),
                 expires_in_days: None,
                 expires_after_date: Some(yesterday),
                 expires_before_date: None,
@@ -607,15 +607,15 @@ mod storage_filter {
 
         #[test]
         fn expires_before_lt_expires_after_returns_error() {
-            let now = Local::now();
-            let yesterday = now.checked_sub_days(Days::new(1)).unwrap();
+            let today = Local::now().date_naive();
+            let yesterday = today.checked_sub_days(Days::new(1)).unwrap();
             let storage_filter = StorageFilter {
                 product_name: None,
                 drawer_name: None,
                 freezer_name: None,
                 in_before: None,
                 expires_in_days: None,
-                expires_after_date: Some(now),
+                expires_after_date: Some(today),
                 expires_before_date: Some(yesterday),
                 available: None,
                 is_withdrawn: None,
