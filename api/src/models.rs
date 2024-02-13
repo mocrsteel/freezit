@@ -1,6 +1,6 @@
 //! [diesel.rs](http://diesel.rs) models.
 
-use chrono::{NaiveDate, DateTime, Local};
+use chrono::NaiveDate;
 use diesel::prelude::*;
 use serde::{Serialize, Deserialize};
 use typeshare::typeshare;
@@ -175,8 +175,7 @@ pub struct Storage {
     pub drawer_id: i32,
     /// Weight of the product being stored, expressed in grams.
     pub weight_grams: f32,
-    /// Date of storage, defaults to the current date. Input is stored based on the Utc DateTime,
-    /// which is converted from `DateTime<Local>`
+    /// Date of storage, defaults to the current date. Derived from `DateTime<Local>` and parsed into Date string.
     pub date_in: NaiveDate,
     /// Date taken out of storage.
     pub date_out: Option<NaiveDate>,
@@ -188,10 +187,12 @@ impl Storage {
     /// defined in `tests/common/db_data.rs`).
     pub fn from_tuple(storage: StorageTuple) -> Storage {
         let (storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id) = storage;
-        let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
+        let date_in = NaiveDate::parse_from_str(date_in, "%Y-%m-%d").unwrap();
+        // let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
         let date_out = match date_out {
             "" => None,
-            _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
+            _ => Some(NaiveDate::parse_from_str(date_out, "%Y-%m-%d").unwrap()),
+            // _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
         };
         
         Storage {
@@ -208,10 +209,12 @@ impl Storage {
     /// defined in `tests/common/db_data.rs`).
     pub fn from_vec(storages: Vec<StorageTuple>) -> Vec<Storage> {
         storages.into_iter().map(|(storage_id, product_id, weight_grams, date_in, date_out, available, drawer_id)| {
-            let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
+            let date_in = NaiveDate::parse_from_str(date_in, "%Y-%m-%d").unwrap();
+            // let date_in = DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date();
             let date_out = match date_out {
                 "" => None,
-                _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
+                _ => Some(NaiveDate::parse_from_str(date_out, "%Y-%m-%d").unwrap()),
+                // _ => Some(DateTime::parse_from_str(format!("{} 12:00:00 +0200", date_in).as_str(), "%Y-%m-%d %H:%M:%S %z").unwrap().naive_utc().date()),
             };
             
             Storage {
@@ -272,8 +275,8 @@ pub struct NewStorageItem {
 }
 impl NewStorageItem {
     /// Create new storage item. `date_in` is accepted as [Local] [DateTime].
-    pub fn from(product_id: i32, drawer_id: i32, weight_grams: f32, date_in: DateTime<Local>) -> Self {
-        let date_in = date_in.naive_utc().date();
+    pub fn from(product_id: i32, drawer_id: i32, weight_grams: f32, date_in: NaiveDate) -> Self {
+        let date_in = date_in;
         NewStorageItem {
             product_id,
             drawer_id,
