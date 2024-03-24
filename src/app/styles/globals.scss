@@ -1,0 +1,153 @@
+@import 'variables';
+
+$btn-shadow-spread: -4px;
+$btn-shadow-blur: 12px;
+
+.table-container {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 32px;
+  padding-right: 32px;
+  height: auto;
+  margin: 0;
+
+  table {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border-spacing: 1px;
+    border-width: thin;
+    background: hsl(0, 0, 90%);
+
+    font-family: Inter, sans-serif;
+    font-style: normal;
+    font-size: 12px;
+    text-align: left;
+    box-shadow: 0px 0px 25px -6px hsl(0, 0, 80%);
+
+    thead th {
+      margin: 0;
+      padding: 8px 16px;
+      color: white;
+      background-color: $accent-darker;
+    }
+    thead th:first-child {
+      border-radius: 8px 0px 0px 0px;
+    }
+    thead th:last-child {
+      border-radius: 0px 8px 0px 0px;
+    }
+    td {
+      padding: 8px 16px;
+      background: white;
+    }
+
+    tbody {
+      tr:last-child {
+        td:first-child {
+          border-radius: 0 0 0 8px;
+        }
+
+        td:last-child {
+          border-radius: 0 0 8px 0;
+        }
+      }
+    }
+  }
+}
+
+
+.content {
+  h1 {
+    @include Inter(1, 1);
+    padding: 14px 28px 14px 28px;
+    width: 120px;
+    height: 40px;
+    border: solid gray 1px;
+  }
+  .box {
+    background-color: red;
+    height: 16px;
+    width: 130px;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.body-container {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+}
+.btn-container {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+
+  .btn-dual {
+    margin: 0 16px 0 16px;
+  }
+}
+
+.btn {
+  font-size: 12px;
+  width: 120px;
+  height: 40px;
+  padding: 8px 16px 8px 16px;
+  border-radius: 8px;
+  border: none;
+  text-align: center;
+  color: white;
+}
+.btn-primary {
+  color: white;
+  background-image: $primary-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $primary-color;
+}
+.btn-accent-light {
+  color: white;
+  background-image: $accent-light-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $accent-light;
+}
+.btn-accent-dark {
+  color: white;
+  background-image: $accent-dark-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $accent-darker;
+}
+.btn-shade-light {
+  color: white;
+  background-image: $shade-light-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $shade-light;
+}
+.btn-shade-dark {
+  color: white;
+  background-image: $shade-dark-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $shade-darker;
+}
+.btn-black {
+  color: white;
+  background-image: $black-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $black;
+}
+
+.clr-primary {
+  color: $primary-color;
+}
+.clr-accent-light {
+  color: $accent-light;
+}
+.clr-accent-dark {
+  color: $accent-darker;
+}
+.clr-shade-light {
+  color: $shade-light;
+}
+.clr-shade-dark {
+  color: $shade-darker;
+}
+.clr-black {
+  color: $black;
+}
+
+

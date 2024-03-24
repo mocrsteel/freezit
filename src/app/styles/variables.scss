@@ -1,0 +1,95 @@
+// Base colors
+$primary-color: #35D949;
+$accent-light: #47AE53;
+$accent-darker: #4C8452;
+$shade-light: #425945;
+$shade-darker: #253327;
+$black: #2E332E;
+
+// Gradient counter-colors
+$primary-color-counter: #81F23B;
+$accent-light-counter: #7EC751;
+$accent-darker-counter: #769E5B;
+$shade-light-counter: #607355;
+$shade-darker-counter: #3F4D37;
+$black-counter: #3F4D37;
+
+// Gradients
+$primary-gradient: linear-gradient(45deg, $primary-color, $primary-color-counter);
+$accent-light-gradient: linear-gradient(45deg, $accent-light, $accent-light-counter);
+$accent-dark-gradient: linear-gradient(45deg, $accent-darker, $accent-darker-counter);
+$shade-light-gradient: linear-gradient(45deg, $shade-light, $shade-light-counter);
+$shade-dark-gradient: linear-gradient(45deg, $shade-darker, $shade-darker-counter);
+$black-gradient: linear-gradient(45deg, $black, $black-counter);
+
+/**
+=========== Font sizing tool - Design tool matching ===========
+Source: https://css-tricks.com/how-to-tame-line-height-in-css/
+Author: Caleb Williams
+ */
+
+/** Our system will use a 8px base vertical rhythm */
+$verticalRhythmBase: 8;
+
+/** Our system's base font size */
+$baseFontSize: 16;
+
+/**
+ * Calculate the type offset for a given font
+ *
+ * @param {number} $lh - the font's base line height
+ * @param {number} $fontSize - the font's size
+ * @param {number} $descenderHeightScale - the font's descender height as a ratio
+ * @return {number} the offset to be added to a transformY to keep the text in place
+ */
+@function calculateTypeOffset($lh, $fontSize, $descenderHeightScale) {
+  $lineHeightScale: $lh / $fontSize;
+  @return ($lineHeightScale - 1) / 2 + $descenderHeightScale;
+}
+
+/**
+ * The basekick base function
+ *
+ * @param {number} $typeSizeModifier - a multiplier to determine the font size
+ * @param {number} $typeRowSpan - how many rows of our vertical rhythm should the type span
+ * @param {number} $descenderHeightScale - the height of the descender expressed as a ratio of the font
+ * @param {number} $capHeight - the font's cap height expressed as a ratio of the font
+ */
+@mixin basekick($typeSizeModifier, $typeRowSpan, $descenderHeightScale, $capHeight) {
+  $fontSize: $typeSizeModifier * $baseFontSize;
+  $lineHeight: $typeRowSpan * $verticalRhythmBase;
+  $typeOffset: calculateTypeOffset($lineHeight, $fontSize, $descenderHeightScale);
+  $topSpace: $lineHeight - $capHeight * $fontSize;
+  $heightCorrection: 0;
+
+  @if $topSpace > $verticalRhythmBase {
+    $heightCorrection: $topSpace - ($topSpace % $verticalRhythmBase);
+  }
+
+  $preventCollapse: 1;
+
+  font-size: #{$fontSize}px;
+  line-height: #{$lineHeight}px;
+  transform: translateY(#{$typeOffset}em);
+  padding-top: #{$preventCollapse}px;
+  &::before {
+    content: "";
+    margin-top: #{-($heightCorrection + $preventCollapse)}px;
+    display: block;
+    height: 0;
+  }
+}
+
+/**
+ * The Lato mixin to apply basekick styles
+ *
+ * @param {number} $typeSizeModifier - a multiplier for our system's $baseFontSize
+ * @param {number} $typeRowSpan - the height of the descender expressed as a ratio of the font
+ */
+@mixin Inter($typeSizeModifier, $typeRowSpan) {
+  $interDescenderHeightScale: 0.12;
+  $InterCapHeight: 0.73;
+
+  @include basekick($typeSizeModifier, $typeRowSpan, $interDescenderHeightScale, $InterCapHeight);
+  font-family: Inter, sans-serif;
+}

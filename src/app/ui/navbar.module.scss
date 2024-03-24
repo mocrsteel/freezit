@@ -1,0 +1,62 @@
+@import '../styles/globals';
+@import '../styles/variables';
+
+.navBar {
+  margin: 0;
+  width: 100vw;
+  background-color: white;
+  box-shadow: hsl(0, 0, 60%, 80%) 0 2px 20px -6px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  overflow: scroll;
+}
+
+.navLink {
+  //dev only
+  //border: 1px solid red;
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  justify-content: center;
+  width: calc(100vw / 5);
+  max-width: calc(500px/5);
+  height: 56px;
+  padding: 8px 16px 8px 16px;
+  margin: 0;
+  background-color: white;
+  text-decoration: none;
+  color: $black;
+  font-size: 8px;
+  font-weight: bold;
+  text-align: center;
+  text-justify: auto;
+
+  a:link, a:visited {
+    color: inherit;
+  }
+}
+
+.navIcon {
+  font-size: 20px;
+  margin-bottom: 3px;
+  padding: 0;
+}
+
+.navLabel {
+  @include Inter(0.5, 1);
+  line-height: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.navActive {
+  background-image: $accent-light-gradient;
+  opacity: 100%;
+  color: white;
+  transition: all 0.7s ease;
+
+  a, a:link, a:visited {
+    color: white;
+  }
+}
