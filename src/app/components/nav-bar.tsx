@@ -1,12 +1,11 @@
 "use client"
-import style from './navbar.module.scss'
-import '@styles/globals.scss'
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {faHouse, faSnowflake, faClipboardList, faCarrot, faGear} from '@fortawesome/free-solid-svg-icons'
-
-import {useEffect, useState} from "react";
-import {usePathname} from 'next/navigation'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import Link from "next/link";
+import {usePathname} from 'next/navigation'
+
+import style from '@styles/navbar.module.scss'
+import '@styles/globals.scss'
 
 const NavBar = () => {
   const currentPath = usePathname()

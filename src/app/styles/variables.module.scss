@@ -1,0 +1,16 @@
+@import './variables.scss';
+
+:export {
+  ColorPrimary: $primary-color;
+  ColorAccentLight: $accent-light;
+  ColorAccentDark: $accent-darker;
+  ColorShadeLight: $shade-light;
+  ColorShadeDark: $shade-darker;
+  ColorBlack: $black;
+  GradientPrimary: $primary-gradient;
+  GradientAccentLight: $accent-light-gradient;
+  GradientAccentDark: $accent-dark-gradient;
+  GradientShadeLight: $shade-light-gradient;
+  GradientShadeDark: $shade-dark-gradient;
+  GradientBlack: $black-gradient;
+}

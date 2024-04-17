@@ -1,0 +1,7 @@
+{
+  "includes": "./src",
+  "entryPoints": ["./src/app/page.tsx"],
+  "media": "./docs-source/static",
+  "name": "Freezit Frontend Docs",
+  "out": "docs",
+}

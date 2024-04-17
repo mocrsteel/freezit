@@ -22,7 +22,7 @@
       "@/*": ["./src/*"],
       "@icons/*": ["./src/app/assets/fontawesome/*"],
       "@styles/*": ["./src/app/styles/*"],
-      "@ui/*": ["./src/app/ui/*"],
+      "@components/*": ["./src/app/components/*"],
       "@lib/*": ["./src/app/lib/*"],
       "@types/*": ["./src/types/*"]
     }

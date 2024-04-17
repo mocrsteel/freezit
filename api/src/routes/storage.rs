@@ -39,6 +39,7 @@ use diesel::prelude::*;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use struct_iterable::Iterable;
+use typeshare;
 
 use crate::{AppState, schema};
 use crate::core::connection::establish_connection;
@@ -130,6 +131,7 @@ impl StorageFilter {
 }
 
 /// Struct representing the returned object when querying the storage endpoint.
+#[typeshare]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageResponse {

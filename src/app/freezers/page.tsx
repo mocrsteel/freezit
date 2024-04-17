@@ -1,53 +1,100 @@
 "use client"
 
-import {useReactTable, createColumnHelper, ColumnDef, getCoreRowModel, flexRender} from "@tanstack/react-table";
-import { useState } from "react"
-// import {Freezer} from "api-types";
+import {
+  createColumnHelper,
+  ExpandedState, flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useReactTable
+} from "@tanstack/react-table"
+import {faCircleUp, faCircleDown, faCircleQuestion} from "@fortawesome/free-regular-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import React, {useState} from "react"
+import {renderToStaticMarkup} from "react-dom/server";
+import {Tooltip} from "react-tooltip"
 
-const dummyData: Array<Api.Freezer> = [
-  {
-    freezerId: 1,
-    name: "Garage"
-  },
-  {
-    freezerId: 2,
-    name: "Kelder"
-  },
-  {
-    freezerId: 3,
-    name: "Berging"
-  },
-  {
-    freezerId: 4,
-    name: "Gang"
-  },
-]
-const columnHelper = createColumnHelper<Api.Freezer>()
+import FilterButtons from "@components/filter-buttons";
+import ActionButton from "@components/action-button";
+import styleVars from "@styles/variables.module.scss"
+import { dummyFreezerResponse } from "@/app/assets/dummy-data";
+
+const columnHelper = createColumnHelper<DisplayFreezer>()
 const columns = [
-  columnHelper.accessor('freezerId', {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>Freezer ID</span>,
-    footer: info => info.column.id
-  }),
   columnHelper.accessor("name", {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>Name</span>,
-    footer: info => info.column.id
+    header: () => <span>
+      Name   <FontAwesomeIcon
+      id={"freezer-table-help"}
+      icon={faCircleQuestion}
+      size={"lg"}
+    />
+    </span>,
+    id: "freezer-name",
+    cell: info => {
+      return (
+        <>
+          {info.row.getCanExpand()
+            ? (
+              <span onClick={info.row.getToggleExpandedHandler()}>
+                {info.row.getIsExpanded()
+                  ? <FontAwesomeIcon icon={faCircleUp} size={"lg"} color={styleVars.ColorAccentDark}/>
+                  : <FontAwesomeIcon icon={faCircleDown} size={"lg"} color={styleVars.ColorAccentLight}/>
+                }
+              </span>
+            )
+            : (<div id={"expand-placeholder"}></div>)
+          }
+          {"\t" + info.getValue()}
+        </>
+      )
+    },
+  }),
+  columnHelper.accessor("totalItemCount", {
+    header: "Items in storage",
+    id: "storage-count",
+    cell: info => info.getValue()
   })
 ]
+const freezerTooltipContent = (
+  <div>
+    If a row is not preceded by {<FontAwesomeIcon icon={faCircleDown}/>}, no drawers have been specified for the given
+    freezer! Consider adding at least one drawer before you can assign items in storage to it.
+  </div>
+)
 
 const Freezers = () => {
-  const [data, setDate] = useState<Api.Freezer[]>(() => [...dummyData])
-  const table = useReactTable({ columns, data, getCoreRowModel: getCoreRowModel() })
+  const [expanded, setExpanded] = useState<ExpandedState>({})
+  const [data, setData] = useState<DisplayFreezer[]>(() => [...dummyFreezerResponse])
+  const table = useReactTable({
+    columns,
+    data,
+    state: {
+      expanded
+    },
+    getExpandedRowModel: getExpandedRowModel(),
+    getCoreRowModel: getCoreRowModel(),
+    onExpandedChange: setExpanded,
+    getSubRows: originalRow => (
+      originalRow.drawers.map(drawer => ({
+        freezerId: drawer.drawerId,
+        name: drawer.name,
+        totalItemCount: drawer.itemCount,
+        drawers: []
+      }))
+    )
+  })
   return (
     <div className={'content'}>
-      <div className={'btn-container btn-dual'}>
-        <button className={'btn btn-shade-light btn-dual'}>Filters</button>
-        <button className={'btn btn-shade-light btn-dual'}>Remove Filters</button>
-      </div>
+      <Tooltip
+        anchorSelect={"#freezer-table-help"}
+        style={{maxWidth: "60vw", whiteSpace: "pre-wrap"}}
+        opacity={0.85}
+      >
+        {freezerTooltipContent}
+      </Tooltip>
+      <FilterButtons/>
       <div className={'table-container'}>
         <table>
-          <thead>
+          <thead className={"shadow"}>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map(header => (
@@ -74,6 +121,7 @@ const Freezers = () => {
           </tbody>
         </table>
       </div>
+      <ActionButton id={"add-freezer-btn"} arrowUp/>
     </div>
   )
 }

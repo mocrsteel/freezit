@@ -1,0 +1,57 @@
+.modal {
+  background: white;
+  box-shadow: 0 0 25px -6px hsl(0, 0, 80%);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+
+  }
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+
+  }
+  h3 {
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
+.modalBtnClose {
+
+}
+.modalBody {
+}
+
+.modalHeader {
+}
+
+.modalOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10; /* sits on top if 1 */
+  width: 100%;
+  height: 100%;
+  background: hsla(0, 0, 0, 0.8);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalWrapper {
+
+}
+
+//:export {
+//  modal: modal;
+//  modalBody: modal-body;
+//  modalHeader: modal-header;
+//  modalOverlay: modal-overlay;
+//  modalWrapper: modal-wrapper;
+//}
