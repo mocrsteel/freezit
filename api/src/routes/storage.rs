@@ -39,7 +39,7 @@ use diesel::prelude::*;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use struct_iterable::Iterable;
-use typeshare;
+use typeshare::typeshare;
 
 use crate::{AppState, schema};
 use crate::core::connection::establish_connection;

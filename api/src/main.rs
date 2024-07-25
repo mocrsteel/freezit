@@ -28,7 +28,7 @@ async fn main() {
             panic!("Failed migrations.")
         });
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     tracing::debug!("listening on {} at port {}", addr.ip(), addr.port());
 
     hyper::Server::bind(&addr)

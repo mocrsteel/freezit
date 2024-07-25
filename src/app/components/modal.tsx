@@ -1,8 +1,11 @@
 import React from "react"
 import ReactDOM from "react-dom"
 
+import "@styles/globals.scss"
 import style from "@styles/modals.module.scss"
 import * as StorageModal from "@components/modal/storage"
+import * as ProductModal from "@components/modal/product"
+import * as FreezerModal from "@components/modal/freezer"
 import {MouseEventHandler} from "react";
 import {scryRenderedComponentsWithType} from "react-dom/test-utils";
 
@@ -19,21 +22,17 @@ export enum ModalType {
   DeleteProduct,
 }
 
-interface ModalContentProps {
-  onClose: () => void
-}
-class ModalContent extends React.Component<ModalContentProps, {}> {
-
-}
-
-type ModalProps = {
+export type ModalProps = {
   kind: ModalType
+  /* Expand the data type when necessary */
+  data?: number
   children?: React.ReactNode
   onClose: () => void
 }
 
-const getModalContent = (kind: ModalType, onClose: () => void): React.ReactNode => {
+const getModalContent = (kind: ModalType, data: ModalProps["data"], onClose: () => void): React.ReactNode => {
   switch (kind) {
+    /* Storage */
     case ModalType.AddStorage:
       return StorageModal.AddStorage(onClose)
     case ModalType.DeleteStorage:
@@ -41,15 +40,21 @@ const getModalContent = (kind: ModalType, onClose: () => void): React.ReactNode 
     case ModalType.EditStorage:
       return StorageModal.EditStorage(onClose)
     case ModalType.WithdrawStorage:
-      return StorageModal.WithdrawStorage(onClose)
+      return StorageModal.WithdrawStorage(data, onClose)
+    /* Products */
+    case ModalType.AddProduct:
+      return ProductModal.AddProduct(onClose)
+    /* Freezers, including drawers */
+    case ModalType.AddFreezer:
+      return FreezerModal.AddFreezer(onClose)
     default:
       throw new Error(`Modal not configured for ${kind.toString()}`)
   }
 }
 
 
-const Modal = ({kind, onClose, children}: ModalProps) => {
-  const modalInnerContent = getModalContent(kind, onClose)
+const Modal = ({kind, data, onClose, children}: ModalProps) => {
+  const modalInnerContent = getModalContent(kind, data, onClose)
   const modalRoot = document.getElementById("modal-root")
   if (!modalRoot) {
     throw new Error("HTML div with id 'modal-root' must be present in the document!")

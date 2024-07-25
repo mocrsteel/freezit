@@ -14,9 +14,10 @@ import {
 import { Bar } from "react-chartjs-2"
 import ChartDataLabels from "chartjs-plugin-datalabels"
 import styleVars from "@styles/variables.module.scss"
-import {MouseEventHandler, useState} from "react";
+import {useState, useEffect} from "react";
 import ActionButton from "@components/action-button";
-import { dummyStorageCount, dummyExpiresNext } from "@/app/assets/dummy-data";+
+import { dummyStorageCount, dummyExpiresNext } from "@/app/assets/dummy-data";import Modal, { ModalType } from "./components/modal"
++
 
 // Tree shaking to reduce amount of imported modules.
 Chart.register(CategoryScale, LinearScale, BarController, BarElement, ChartDataLabels)
@@ -78,11 +79,11 @@ const AlmostEmptyCard = () => {
   )
 }
 
-const UpNextCard = ({ item }: { item: Api.StorageResponse }) => {
+const UpNextCard = ({ item, onClick }: { item: Api.StorageResponse, onClick: () => void }) => {
   const [itemCount, setItemCount] = useState(3)
 
   return (
-    <div id={'up-next-card'} className={'card-container'}>
+    <div id={'up-next-card'} className={'card-container'} onClick={onClick}>
       <h2 id={'up-next-title'}>What{"'"}s up next?</h2>
          <div className={'card'}>
           <div className={'info-box'}>
@@ -107,17 +108,23 @@ const UpNextCard = ({ item }: { item: Api.StorageResponse }) => {
 
 const Home = () => {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [itemId, setItemId] = useState<number>()
+  
+  useEffect(() => {
+    const itemIdContainer = document.getElementById("item-id-number")
+    if (itemIdContainer) {
+      setItemId(Number(itemIdContainer.innerText))
+    }
+  }, [])
   return (
     <div className={"content"}>
+      {showWithdrawModal &&
+        <Modal kind={ModalType.WithdrawStorage} onClose={() => setShowWithdrawModal(false)} data={itemId}/>
+      }
       <main>
         <h1>Welcome Back!</h1>
         <AlmostEmptyCard />
-        <UpNextCard item={dummyExpiresNext} />
-        <UpNextCard item={dummyExpiresNext} />
-        <UpNextCard item={dummyExpiresNext} />
-        <UpNextCard item={dummyExpiresNext} />
-        <UpNextCard item={dummyExpiresNext} />
-        <UpNextCard item={dummyExpiresNext} />
+        <UpNextCard item={dummyExpiresNext} onClick={() => setShowWithdrawModal(true)} />
         <ActionButton id={"btn-withdraw-storage"} onClick={() => setShowWithdrawModal(true)} />
       </main>
     </div>
