@@ -130,6 +130,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   text-align: center;
   color: white;
 }
+
 .btn-primary {
   color: white;
   background-image: $primary-gradient;
@@ -141,6 +142,7 @@ $action-btn-height: calc(32px + 16px + 71px);
     transition: all 0.2s ease;
   }
 }
+
 .btn-accent-light {
   color: white;
   background-image: $accent-light-gradient;
@@ -152,6 +154,7 @@ $action-btn-height: calc(32px + 16px + 71px);
     transition: all 0.2s ease;
   }
 }
+
 .btn-accent-dark {
   color: white;
   background-image: $accent-dark-gradient;
@@ -163,6 +166,7 @@ $action-btn-height: calc(32px + 16px + 71px);
     transition: all 0.2s ease;
   }
 }
+
 .btn-shade-light {
   color: white;
   background-image: $shade-light-gradient;
@@ -185,6 +189,7 @@ $action-btn-height: calc(32px + 16px + 71px);
     transition: all 0.2s ease;
   }
 }
+
 .btn-black {
   color: white;
   background-image: $black-gradient;
@@ -229,8 +234,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   color: $black;
 }
 
-
-
+/* Table style */
 
 .table-container {
   max-width: calc(100% - 2 * $page-margin-x);
@@ -295,4 +299,3 @@ $action-btn-height: calc(32px + 16px + 71px);
     }
   }
 }
-

@@ -6,48 +6,65 @@
   flex-direction: column;
   padding: 24px; // Change back to 24px!
 
+  max-height: calc(80vh);
+  overflow: scroll;
+
+
   h1 {
-    margin-left: 16px;
+    margin-left: 0px;
     font-size: 32px;
     font-weight: 600;
-    
+
   }
+
   h2 {
     margin-left: 16px;
     // margin-bottom: 8px;
     font-size: 24px;
     font-weight: 500;
   }
+
   h3 {
     margin-left: 16px;
     font-size: 12px;
     font-weight: 600;
   }
+
   form {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    
+    .mainLabel {
+      font-size: 16px;
+      font-weight: 600;
+    }
 
     label {
       display: flex;
       flex-direction: column;
       margin: 8px 0px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
+
       
-      input {
-        margin-top: 8px;
-        padding: 8px 16px 8px 16px;
-        border: 1px solid gray;
-        border-radius: 8px;
-        height: 18px;
-      }
       button {
         width: 24%;
         margin-left: 5%;
         height: 36px;
-  
       }
       
+      input {
+        padding: 8px 16px 8px 16px;
+        border: 1px solid gray;
+        border-radius: 8px;
+        height: 18px;
+        margin-top: 8px;
+      }
+      
+      p {
+        margin-left: 0;
+      }
       select {
         margin-top: 8px;
         padding: 8px 16px 8px 16px;
@@ -56,32 +73,55 @@
         border-radius: 8px;
       }
 
+
+      .mainInput {
+        margin-top: 8px;
+        // margin-bottom: 8px;
+      }
+
       .inputRow {
+        margin-top: 0px;
+
         display: flex;
         flex-direction: row;
+        align-items: end;
         width: 100%;
-        align-items: center;
 
         input {
           width: 70%
         }
+
         button {
-          width: 20%
+          width: 20%;
+          padding: 8px;
+          // margin-top: 8px;
         }
       }
-      
+
     }
-    
+
+    div.centerButton {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+
+      button {
+        height: 32px;
+        width: 100%;
+        margin-top: 16px;
+      }
+    }
+
     .invalidInput {
       border: 1px solid red;
       box-shadow: 0px 0px 12px -4px red;
-      
+
       /* Figure out a way to change the blue border when active!*/
     }
-    
+
     .invalidInputMessage {
       margin-top: -4px;
-      margin-left: 16px;
+      margin-left: 0px;
       color: red;
       font-size: 12px;
       font-weight: 500;
@@ -93,10 +133,12 @@
     margin-left: 16px;
     margin-top: 0px;
     padding: 0;
+
     b {
       font-weight: 500;
       padding-right: 8px;
     }
+
     li {
       list-style: none;
       list-style-position: inside;
@@ -112,25 +154,26 @@
   width: 100%;
   align-items: center;
   justify-content: center;
-  
+  margin: 40px 0 8px 0;
+
   button {
-    width: 10%;
-    margin: 16px;
+    width: fit-content;
+    margin: 0 16px;
     padding: 8px 16px;
-    
+
     border-radius: 8px;
   }
-
 }
-
 
 .modalOverlay {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 10; /* sits on top if highest z-index */
-  width: 100%;
-  height: 100%;
+  z-index: 10;
+  /* sits on top if highest z-index */
+  width: 100vw;
+  height: 100vh;
+  overflow-y: auto;
   background: hsla(0, 0, 0, 0.8);
 
   display: flex;
