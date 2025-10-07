@@ -1,38 +1,63 @@
-"use client"
+"use client";
 import {
   Chart,
   ChartData,
   ChartOptions,
-  PluginChartOptions,
-  CoreChartOptions,
   CategoryScale,
   LinearScale,
   BarController,
   BarElement,
-  ChartEvent, ActiveElement
-} from "chart.js"
-import { Bar } from "react-chartjs-2"
-import ChartDataLabels from "chartjs-plugin-datalabels"
-import styleVars from "@styles/variables.module.scss"
-import {useState, useEffect} from "react";
+} from "chart.js";
+import {Bar} from "react-chartjs-2";
+import ChartDataLabels from "chartjs-plugin-datalabels";
+import React, {useState, useEffect} from "react";
+
 import ActionButton from "@components/action-button";
-import { dummyStorageCount, dummyExpiresNext } from "@/app/assets/dummy-data";import Modal, { ModalType } from "./components/modal"
-+
+import {dummyStorageCount, dummyExpiresNext} from "@/assets/dummy-data";
+import Link from "next/link";
 
 // Tree shaking to reduce amount of imported modules.
-Chart.register(CategoryScale, LinearScale, BarController, BarElement, ChartDataLabels)
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  BarController,
+  BarElement,
+  ChartDataLabels,
+);
+
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  cardTitle?: string;
+}
+
+const Card: React.FC<CardProps> = (props) => {
+  const {cardTitle, children, className, ...rest} = props;
+  return (
+    <div role="card-container" className={"my-1 " + className} {...rest}>
+      {cardTitle ? <h2 className="font-normal text-lg mt-4 mb-2">{cardTitle}</h2> : null}
+      <div
+        role="card"
+        className="rounded-lg shadow-md border-t border-l border-r border-slate-500/5 font-light text-sm"
+      >
+        {props.children}
+      </div>
+    </div>
+  );
+};
 
 const AlmostEmptyCard = () => {
+  const cardTitle = "Only a few left..."
   const data: ChartData<"bar"> = {
-    labels: dummyStorageCount.map(storage => storage.name),
-    datasets: [{
-      label: '',
-      data: dummyStorageCount.map(storage => storage.count),
-      backgroundColor: styleVars.ColorAccentDark,
-      hoverBackgroundColor: styleVars.ColorShadeLight,
-    }],
-  }
-  const plugins = [ChartDataLabels]
+    labels: dummyStorageCount.map((storage) => storage.name),
+    datasets: [
+      {
+        label: "",
+        data: dummyStorageCount.map((storage) => storage.count),
+        backgroundColor: "#26552c",
+        hoverBackgroundColor: "#32873c",
+      },
+    ],
+  };
+  const plugins = [ChartDataLabels];
   const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -52,83 +77,87 @@ const AlmostEmptyCard = () => {
         },
         grid: {
           display: false,
-        }
-      }
+        },
+      },
     },
     plugins: {
       datalabels: {
         color: "white",
         anchor: "end",
         align: "start",
-      }
-    }
-  }
+      },
+    },
+  };
   return (
-    <div id={'almost-empty-card'} className={'card-container'}>
-      <h2 id={'almost-empty-title'}>Only a few left...</h2>
-      <div className={'card'}>
-        <div className={'graph'}>
-          <Bar
-            data={data}
-            plugins={plugins}
-            options={options}
-          />
-        </div>
+    <Card id="almost-empty-card" cardTitle={cardTitle}>
+      <div className="max-h-32 py-1">
+        <Bar data={data} plugins={plugins} options={options}/>
       </div>
-    </div>
-  )
+    </Card>
+  );
+};
+
+interface UpNextCardProps extends React.HTMLProps<HTMLDivElement> {
+  item: Api.StorageResponse[];
 }
 
-const UpNextCard = ({ item, onClick }: { item: Api.StorageResponse, onClick: () => void }) => {
-  const [itemCount, setItemCount] = useState(3)
+const UpNextCard: React.FC<UpNextCardProps> = (props) => {
+  const cardTitle = "What's up next?";
+  const [itemCount, setItemCount] = useState(3);
+  const {item, ...rest} = props;
 
-  return (
-    <div id={'up-next-card'} className={'card-container'} onClick={onClick}>
-      <h2 id={'up-next-title'}>What{"'"}s up next?</h2>
-         <div className={'card'}>
-          <div className={'info-box'}>
-           <div id={'item-info'}>
-             <h3>{item.productName}</h3>
-             <p>Expires in {item.expiresInDays} days.</p>
-             <p>Date: {item.expirationDate.toDateString()}</p>
-             <p>{itemCount > 1
-               ? `${itemCount} items left`
-               : `${itemCount} item left`
-             }</p>
-           </div>
-           <div id={'item-id'}>
-             <p id={"item-id-number"}>{item.storageId}</p>
-             <p id={"item-id-text"}>Storage ID</p>
-           </div>
+  const cards = item.map((item, idx) => {
+    return (
+      <Card key={idx} id={"up-next-card"} cardTitle={idx === 0 ? cardTitle : undefined} {...rest} className="p-0 gap-2">
+        <div className="grid grid-cols-3">
+          <div id="next-info" className="col-span-2 border-r border-r-slate-400/10 p-4">
+            <h3 className="font-semibold">{item.productName}</h3>
+            <p>Expires in {item.expiresInDays} days.</p>
+            <p>Date: {item.expirationDate.toDateString()}</p>
+            <p>
+              {itemCount > 1
+                ? `${itemCount} items left`
+                : `${itemCount} item left`}
+            </p>
           </div>
-         </div>
-    </div>
-  )
+          <div id="item-id"
+               className="h-full rounded-r-md col-span-1 flex flex-col place-content-center items-start pl-4 shadow-[inset_0_0_30px_-15px_rgba(0,0,0,0.6)]">
+            <p id="item-id-number" className="text-3xl font-extralight">{item.storageId}</p>
+            <p id="item-id-text" className="font-extralight">Storage ID</p>
+          </div>
+        </div>
+      </Card>
+    )
+  })
+
+  return <div className="flex flex-col gap-2">{cards}</div>
 }
 
-const Home = () => {
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
-  const [itemId, setItemId] = useState<number>()
-  
+export default function HomePage() {
+  const [itemId, setItemId] = useState<number>();
+
   useEffect(() => {
-    const itemIdContainer = document.getElementById("item-id-number")
+    const itemIdContainer = document.getElementById("item-id-number");
     if (itemIdContainer) {
-      setItemId(Number(itemIdContainer.innerText))
+      setItemId(Number(itemIdContainer.innerText));
     }
-  }, [])
-  return (
-    <div className={"content"}>
-      {showWithdrawModal &&
-        <Modal kind={ModalType.WithdrawStorage} onClose={() => setShowWithdrawModal(false)} data={itemId}/>
-      }
-      <main>
-        <h1>Welcome Back!</h1>
-        <AlmostEmptyCard />
-        <UpNextCard item={dummyExpiresNext} onClick={() => setShowWithdrawModal(true)} />
-        <ActionButton id={"btn-withdraw-storage"} onClick={() => setShowWithdrawModal(true)} />
-      </main>
-    </div>
-  )
-}
+  }, []);
 
-export default Home
+  const handleWithdrawClick = () => {
+    window.alert("TODO: Implement open dialogs by address to make this button work properly!")
+  }
+
+  return (
+    <div className="">
+      <div>
+        <h1 className="text-xl font-medium">Welcome Back!</h1>
+        <AlmostEmptyCard/>
+        <UpNextCard
+          item={dummyExpiresNext}
+          onClick={() => handleWithdrawClick()}
+        />
+      </div>
+      <ActionButton id="withdraw-btn" href="/storage/withdraw" action="withdraw"/>
+    </div>
+  );
+};

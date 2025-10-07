@@ -268,7 +268,6 @@ pub struct NewStorageItem {
 impl NewStorageItem {
     /// Create new storage item. `date_in` is accepted as [Local] [DateTime].
     pub fn from(product_id: i32, drawer_id: i32, weight_grams: f32, date_in: NaiveDate) -> Self {
-        let date_in = date_in;
         NewStorageItem {
             product_id,
             drawer_id,

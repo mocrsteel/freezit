@@ -6,14 +6,14 @@ type TableProps<T> = {
   isExpandable?: boolean,
 }
 
-const Table = <T,>({columns, data}: TableProps<T>) => {
+export default function Table<T, >({columns, data}: TableProps<T>) {
   const table = useReactTable({
     columns, data, getCoreRowModel: getCoreRowModel()
   })
   return (
-    <div className={'table-container'}>
+    <div className="">
       <table>
-        <thead className={"shadow"}>
+        <thead className="">
         {table.getHeaderGroups().map(headerGroup => (
           <tr key={headerGroup.id}>
             {headerGroup.headers.map(header => (
@@ -42,5 +42,3 @@ const Table = <T,>({columns, data}: TableProps<T>) => {
     </div>
   )
 }
-
-export default Table

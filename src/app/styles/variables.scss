@@ -4,7 +4,8 @@ $accent-light: #47AE53;
 $accent-darker: #4C8452;
 $shade-light: #425945;
 $shade-darker: #253327;
-$black: #2E332E;
+$black: hsl(120, 5%, 19%);
+$danger-color: #d33333;
 
 // Gradient counter-colors
 $primary-color-counter: #81F23B;
@@ -13,6 +14,7 @@ $accent-darker-counter: #769E5B;
 $shade-light-counter: #607355;
 $shade-darker-counter: #3F4D37;
 $black-counter: #3F4D37;
+$danger-counter: #cf6e6e;
 
 // Gradients
 $primary-gradient: linear-gradient(45deg, $primary-color, $primary-color-counter);
@@ -21,6 +23,7 @@ $accent-dark-gradient: linear-gradient(45deg, $accent-darker, $accent-darker-cou
 $shade-light-gradient: linear-gradient(45deg, $shade-light, $shade-light-counter);
 $shade-dark-gradient: linear-gradient(45deg, $shade-darker, $shade-darker-counter);
 $black-gradient: linear-gradient(45deg, $black, $black-counter);
+$danger-gradient: linear-gradient(45deg, $danger-color, $danger-counter);
 
 // Global sizing variables
 $navbar-link-height: 56px;
@@ -49,8 +52,8 @@ $baseFontSize: 16;
  * @return {number} the offset to be added to a transformY to keep the text in place
  */
 @function calculateTypeOffset($lh, $fontSize, $descenderHeightScale) {
-  $lineHeightScale: $lh / $fontSize;
-  @return ($lineHeightScale - 1) / 2 + $descenderHeightScale;
+  $lineHeightScale: calc($lh / $fontSize);
+  @return calc(($lineHeightScale - 1) / 2) + $descenderHeightScale;
 }
 
 /**

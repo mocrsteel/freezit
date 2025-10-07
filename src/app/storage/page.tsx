@@ -19,20 +19,18 @@
  * ```
  */
 import {useState} from 'react';
+import Link from 'next/link';
 import FilterButtons from "@components/filter-buttons";
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import { faPenClip, faTrashCan } from '@fortawesome/free-solid-svg-icons';
-import {create} from "node:domain";
-import {createColumnHelper, flexRender, getCoreRowModel, useReactTable} from "@tanstack/react-table";
+import {FaPenClip, FaTrashCan} from "react-icons/fa6"
+import {createColumnHelper, getCoreRowModel, useReactTable} from "@tanstack/react-table";
 
 import Table from '@components/table'
 import ActionButton from "@components/action-button"
-import Modal, { ModalType } from "@components/modal"
-import { dummyStorage } from "@/app/assets/dummy-data";
+import {dummyStorage} from "@/assets/dummy-data";
 
 /* Made for UI checking of overflowing and scrolling. DELETE LATER */
 const dummyStorageExtended = dummyStorage.concat(
-  dummyStorage.reduce((arr: Api.StorageResponse[], val, i) => {
+  dummyStorage.reduce((arr: Api.StorageResponse[], val, _) => {
     if (val.storageId === 4) {
       for (let idx = 0; idx < 50; idx++) {
         arr.push({
@@ -74,25 +72,24 @@ const columns = [
   }),
   columnHelper.display({
     id: 'actions',
-    cell: () => <span><FontAwesomeIcon icon={faPenClip} size={'lg'} />{"\t"}<FontAwesomeIcon icon={faTrashCan} size={'lg'} /></span>
+    cell: () => <span className="flex flex-row flex-nowrap gap-1"><FaPenClip/>{"\t"}<FaTrashCan/></span>
   })
 ]
 
 const Storage = () => {
   const [data, setData] = useState<Api.StorageResponse[]>(() => [...dummyStorageExtended])
   const [showModal, setShowModal] = useState<boolean>(false);
-  const table = useReactTable({ columns, data, getCoreRowModel: getCoreRowModel() })
+  const table = useReactTable({columns, data, getCoreRowModel: getCoreRowModel()})
   return (
     <div className={'content'}>
-      {showModal &&
-        <Modal kind={ModalType.AddStorage} onClose={() => setShowModal(false)} />
-      }
-      <FilterButtons />
+      <FilterButtons/>
       <Table columns={columns} data={data}/>
+      <Link href={"/storage/withdraw"}><button>Withdraw an item</button></Link>
       <ActionButton
         id={"btn-storage-add"}
-        onClick={() => setShowModal(true)}
-        arrowUp/>
+        action="add"
+        href="/storage/add"
+      />
     </div>
   )
 }

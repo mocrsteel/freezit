@@ -1,14 +1,12 @@
-import { Inter } from 'next/font/google'
+import {Inter, Geist} from 'next/font/google'
 import React from "react";
-import type { Metadata } from 'next'
+import type {Metadata} from 'next'
 
-import '@fortawesome/fontawesome-svg-core/styles.css'
-import '@styles/globals.scss'
+import '@/globals.css'
 
 import NavBar from "@components/nav-bar";
-import Modal from "@components/modal";
 
-const inter = Inter({ subsets: ['latin'] })
+const font = Geist({subsets: ['latin']})
 
 export const metadata: Metadata = {
   title: 'Freezit',
@@ -17,16 +15,21 @@ export const metadata: Metadata = {
 
 const RootLayout = ({
   children,
+  modal,
 }: {
   children: React.ReactNode
+  modal: React.ReactNode
 }) => {
   return (
     <html lang="en">
-      <body className={inter.className + ' body-container'}>
-        <div id={"modal-root"} />
-        <NavBar />
-        {children}
-      </body>
+    <body className={font.className}>
+    <div id={"dialogs-root"}/>
+    {modal}
+    <NavBar/>
+    <main id="content" className="p-4 m-0">
+      {children}
+    </main>
+    </body>
     </html>
   )
 }

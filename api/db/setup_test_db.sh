@@ -30,7 +30,7 @@ $PSQL "TRUNCATE TABLE IF EXISTS products RESTART IDENTITY CASCADE;"
 
 
 eeding test data to the database
-# -- products
+# -- (.)products
 echo -e "Feeding products to database"
 $PSQL "
 INSERT INTO products

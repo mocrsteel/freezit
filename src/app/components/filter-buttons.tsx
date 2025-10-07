@@ -1,4 +1,4 @@
-const FilterButtons = () => {
+export default function FilterButtons() {
   return (
     <div className={'btn-container btn-dual'}>
       <button className={'btn btn-shade-light btn-dual'}>Filters</button>
@@ -6,5 +6,3 @@ const FilterButtons = () => {
     </div>
   )
 }
-
-export default FilterButtons

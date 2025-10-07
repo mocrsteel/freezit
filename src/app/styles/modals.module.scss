@@ -1,6 +1,6 @@
 .modal {
   background: white;
-  box-shadow: 0 0 25px -6px hsl(0, 0, 80%);
+  box-shadow: 0 0 25px -6px hsl(0deg, 0%, 80%);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -34,7 +34,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    
+
     .mainLabel {
       font-size: 16px;
       font-weight: 600;
@@ -47,13 +47,13 @@
       font-size: 12px;
       font-weight: 500;
 
-      
+
       button {
         width: 24%;
         margin-left: 5%;
         height: 36px;
       }
-      
+
       input {
         padding: 8px 16px 8px 16px;
         border: 1px solid gray;
@@ -61,7 +61,7 @@
         height: 18px;
         margin-top: 8px;
       }
-      
+
       p {
         margin-left: 0;
       }
@@ -84,7 +84,7 @@
 
         display: flex;
         flex-direction: row;
-        align-items: end;
+        align-items: flex-end;
         width: 100%;
 
         input {
@@ -174,7 +174,7 @@
   width: 100vw;
   height: 100vh;
   overflow-y: auto;
-  background: hsla(0, 0, 0, 0.8);
+  background: hsla(0deg, 0%, 0%, 0.8);
 
   display: flex;
   align-items: center;
@@ -197,9 +197,9 @@
 }
 
 //:export {
-//  modal: modal;
-//  modalBody: modal-body;
-//  modalHeader: modal-header;
-//  modalOverlay: modal-overlay;
-//  modalWrapper: modal-wrapper;
+//  dialogs: dialogs;
+//  modalBody: dialogs-body;
+//  modalHeader: dialogs-header;
+//  modalOverlay: dialogs-overlay;
+//  modalWrapper: dialogs-wrapper;
 //}

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import 'variables';
 
 $btn-shadow-spread: -4px;
@@ -47,7 +51,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   margin-top: 0;
   border-radius: 8px;
   border-spacing: 1px;
-  box-shadow: 0px 0px 25px -6px hsl(0, 0, 80%);
+  box-shadow: 0px 0px 25px -6px hsl(0deg, 0%, 80%);
 
   .graph {
     display: flex;
@@ -63,7 +67,7 @@ $action-btn-height: calc(32px + 16px + 71px);
 
     #item-info {
       padding: 12px 16px;
-      box-shadow: 0px 0px 25px -6px hsl(0, 0, 80%);
+      box-shadow: 0px 0px 25px -6px hsl(0deg, 0%, 80%);
       h3 {
         margin-top: 0;
         margin-bottom: 12px;
@@ -132,15 +136,16 @@ $action-btn-height: calc(32px + 16px + 71px);
 }
 
 .btn-primary {
-  color: white;
-  background-image: $primary-gradient;
-  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $primary-color;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $primary-color;
-    transition: all 0.2s ease;
-  }
+
+  //color: white;
+  //background-image: $primary-gradient;
+  //box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $primary-color;
+  //transition: all 0.2s ease;
+
+  //&:hover {
+  //  box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $primary-color;
+  //  transition: all 0.2s ease;
+  //}
 }
 
 .btn-accent-light {
@@ -148,7 +153,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   background-image: $accent-light-gradient;
   box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $accent-light;
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $accent-light;
     transition: all 0.2s ease;
@@ -160,7 +165,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   background-image: $accent-dark-gradient;
   box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $accent-darker;
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $accent-darker;
     transition: all 0.2s ease;
@@ -172,7 +177,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   background-image: $shade-light-gradient;
   box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $shade-light;
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $shade-light;
     transition: all 0.2s ease;
@@ -183,7 +188,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   background-image: $shade-dark-gradient;
   box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $shade-darker;
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $shade-darker;
     transition: all 0.2s ease;
@@ -195,7 +200,7 @@ $action-btn-height: calc(32px + 16px + 71px);
   background-image: $black-gradient;
   box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $black;
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $black;
     transition: all 0.2s ease;
@@ -211,6 +216,18 @@ $action-btn-height: calc(32px + 16px + 71px);
 
   &:hover {
     box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $accent-darker;
+    transition: all 0.2s ease;
+  }
+}
+
+.btn-danger {
+  color: white;
+  background-image: $danger-gradient;
+  box-shadow: 0 3px $btn-shadow-blur $btn-shadow-spread $danger-color;
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 3px $btn-shadow-blur calc($btn-shadow-spread + 3px) $danger-color;
     transition: all 0.2s ease;
   }
 }
@@ -248,7 +265,7 @@ $action-btn-height: calc(32px + 16px + 71px);
 
   border-radius: 8px;
   border-spacing: 1px;
-  box-shadow: 0px 0px 25px -6px hsl(0, 0, 80%);
+  box-shadow: 0px 0px 25px -6px hsl(0deg, 0%, 80%);
 
   table {
     display: table;
@@ -258,7 +275,7 @@ $action-btn-height: calc(32px + 16px + 71px);
     border-radius: 8px;
     border-spacing: 1px;
 
-    background: hsl(0, 0, 90%);
+    background: hsl(0deg, 0%, 90%);
 
     font-family: Inter, sans-serif;
     font-style: normal;

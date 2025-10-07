@@ -15,6 +15,10 @@ export const dummyFreezers: Array<Api.Freezer> = [
     freezerId: 4,
     name: "Gang",
   },
+  {
+    freezerId: 10,
+    name: "Dummy created freezer",
+  },
 ]
 
 export const dummyDrawers: DrawerOverview[] = [
@@ -156,14 +160,36 @@ export const dummyStorageCount: StorageCount[] = [
   }
 ]
 
-export const dummyExpiresNext = {
-  storageId: 4,
-  weightGrams: 321.1,
-  inStorageSince: new Date(2024, 1, 15),
-  outStorageSince: undefined,
-  productName: "Wortelen",
-  drawerName: "Schuif 1",
-  freezerName: "Berging",
-  expiresInDays: 24,
-  expirationDate: new Date(2026, 2, 29)
-}
+export const dummyExpiresNext = [
+  {
+    storageId: 4,
+    weightGrams: 321.1,
+    inStorageSince: new Date(2024, 1, 15),
+    outStorageSince: undefined,
+    productName: "Wortelen",
+    drawerName: "Schuif 1",
+    freezerName: "Berging",
+    expiresInDays: 24,
+    expirationDate: new Date(2026, 2, 29)
+  }, {
+    storageId: 8,
+    weightGrams: 255.1,
+    inStorageSince: new Date(2025, 1, 15),
+    outStorageSince: undefined,
+    productName: "Wortelsoep",
+    drawerName: "Schuif 2",
+    freezerName: "Berging",
+    expiresInDays: 10,
+    expirationDate: new Date(2026, 2, 29)
+  }, {
+    storageId: 230,
+    weightGrams: 535.1,
+    inStorageSince: new Date(2025, 1, 15),
+    outStorageSince: undefined,
+    productName: "Gehakt",
+    drawerName: "Schuif 4",
+    freezerName: "Berging",
+    expiresInDays: 1,
+    expirationDate: new Date(2026, 2, 29)
+  },
+]

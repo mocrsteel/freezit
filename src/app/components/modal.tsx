@@ -1,77 +1,19 @@
-import React from "react"
-import ReactDOM from "react-dom"
+"use client"
 
-import "@styles/globals.scss"
-import style from "@styles/modals.module.scss"
-import * as StorageModal from "@components/modal/storage"
-import * as ProductModal from "@components/modal/product"
-import * as FreezerModal from "@components/modal/freezer"
-import {MouseEventHandler} from "react";
-import {scryRenderedComponentsWithType} from "react-dom/test-utils";
+import {FaXmark} from 'react-icons/fa6'
+import {useRouter} from 'next/navigation'
 
-export enum ModalType {
-  AddStorage,
-  WithdrawStorage,
-  EditStorage,
-  DeleteStorage,
-  AddFreezer,
-  EditFreezer,
-  DeleteFreezer,
-  AddProduct,
-  EditProduct,
-  DeleteProduct,
-}
+export default function Modal({children}: { children: React.ReactNode }) {
+  const router = useRouter()
 
-export type ModalProps = {
-  kind: ModalType
-  /* Expand the data type when necessary */
-  data?: number
-  children?: React.ReactNode
-  onClose: () => void
-}
-
-const getModalContent = (kind: ModalType, data: ModalProps["data"], onClose: () => void): React.ReactNode => {
-  switch (kind) {
-    /* Storage */
-    case ModalType.AddStorage:
-      return StorageModal.AddStorage(onClose)
-    case ModalType.DeleteStorage:
-      return StorageModal.DeleteStorage(onClose)
-    case ModalType.EditStorage:
-      return StorageModal.EditStorage(onClose)
-    case ModalType.WithdrawStorage:
-      return StorageModal.WithdrawStorage(data, onClose)
-    /* Products */
-    case ModalType.AddProduct:
-      return ProductModal.AddProduct(onClose)
-    /* Freezers, including drawers */
-    case ModalType.AddFreezer:
-      return FreezerModal.AddFreezer(onClose)
-    default:
-      throw new Error(`Modal not configured for ${kind.toString()}`)
-  }
-}
-
-
-const Modal = ({kind, data, onClose, children}: ModalProps) => {
-  const modalInnerContent = getModalContent(kind, data, onClose)
-  const modalRoot = document.getElementById("modal-root")
-  if (!modalRoot) {
-    throw new Error("HTML div with id 'modal-root' must be present in the document!")
-  }
-
-  const modalContent = (
-    <div className={style.modalOverlay}>
-      <div className={style.modal}>
-        {modalInnerContent}
+  return (
+    <div id="modal-container" className="absolute z-50 h-full w-full backdrop-blur-md bg-black/50">
+      <div id="modal-dialog" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-fit w-fit bg-white rounded-xl flex flex-col">
+        <div id="modal-header" className="flex w-full justify-end p-4 text-xl">
+          <FaXmark className="hover:rotate-90 hover:transition-transform transition-transform" onClick={() => {router.back()}}/>
+        </div>
+        <div id="modal-content" className="w-full px-4 pb-4">{children}</div>
       </div>
     </div>
   )
-
-  return ReactDOM.createPortal(
-    modalContent,
-    modalRoot
-  )
 }
-
-export default Modal

@@ -4,9 +4,9 @@ declare namespace Api {
 	*/
 
 	/**
-	 * Product database model, matching [crate::schema::products].
+	 * Product database model, matching [crate::schema::(.)products].
 	 *
-	 * This represents all the products that could be have been or are stored in one of the freezers.
+	 * This represents all the (.)products that could be have been or are stored in one of the freezers.
 	 * The expiration time is used to calculate the expiration date of the different storage items in
 	 * the freezers and can be used to help the user which storage items should be consumed first.
 	 */
