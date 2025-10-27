@@ -59,7 +59,7 @@ async fn creates_freezer_correctly() {
         get_response.status().canonical_reason().unwrap()
     );
 
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let response_freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -95,7 +95,7 @@ async fn create_returns_error_on_non_unique_name() {
         create_response.status().canonical_reason().unwrap()
     );
 
-    let body = hyper::body::to_bytes(create_response.into_body())
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let error_text = std::str::from_utf8(&body[..]).unwrap();
@@ -114,7 +114,7 @@ async fn gets_correct_freezer_by_id() {
     let get_response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/freezers/id={}", expected_freezer.freezer_id))
+                .uri(format!("/api/freezers/{}", expected_freezer.freezer_id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -123,7 +123,7 @@ async fn gets_correct_freezer_by_id() {
 
     assert_eq!(get_response.status(), StatusCode::OK,);
 
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let response_freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -158,7 +158,7 @@ async fn gets_correct_freezer_by_name() {
         get_response.status().canonical_reason().unwrap()
     );
 
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let response_freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -190,7 +190,7 @@ async fn root_gets_all_freezers() {
         root_response.status().canonical_reason().unwrap()
     );
 
-    let bytes = hyper::body::to_bytes(root_response.into_body())
+    let bytes = axum::body::to_bytes(root_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let response_freezer_vec: Vec<Freezer> = serde_json::from_slice(&bytes).unwrap();
@@ -206,17 +206,17 @@ async fn updates_freezer_correctly() {
     let nonexistent_freezer_name = "Tuinhuis";
 
     let request = Request::builder()
-        .uri("/api/freezers/id=1")
+        .uri("/api/freezers/1")
         .body(Body::empty())
         .unwrap();
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
         .await
         .unwrap();
 
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let mut freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -228,7 +228,7 @@ async fn updates_freezer_correctly() {
         .header("Content-Type", "application/json")
         .body(Body::from(ser::to_string(&freezer).unwrap()))
         .unwrap();
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -245,14 +245,14 @@ async fn updates_freezer_correctly() {
     let check_update_response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/freezers/id={}", freezer.freezer_id))
+                .uri(format!("/api/freezers/{}", freezer.freezer_id))
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
 
-    let bytes = hyper::body::to_bytes(check_update_response.into_body())
+    let bytes = axum::body::to_bytes(check_update_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let updated_freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -268,17 +268,17 @@ async fn update_returns_error_on_non_unique_name() {
     let existent_freezer_name = FREEZERS[2].1;
 
     let request = Request::builder()
-        .uri("/api/freezers/id=1")
+        .uri("/api/freezers/1")
         .body(Body::empty())
         .unwrap();
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
         .await
         .unwrap();
 
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let mut freezer: Freezer = serde_json::from_slice(&bytes).unwrap();
@@ -290,7 +290,7 @@ async fn update_returns_error_on_non_unique_name() {
         .header("Content-Type", "application/json")
         .body(Body::from(ser::to_string(&freezer).unwrap()))
         .unwrap();
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -304,7 +304,7 @@ async fn update_returns_error_on_non_unique_name() {
         update_response.status().canonical_reason().unwrap()
     );
 
-    let body = hyper::body::to_bytes(update_response.into_body())
+    let body = axum::body::to_bytes(update_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let error_text = std::str::from_utf8(&body[..]).unwrap();
@@ -318,11 +318,11 @@ async fn deletes_freezer_correctly() {
     let mut app = app(Some(ctx.database_url())).await;
 
     let request = Request::builder()
-        .uri("/api/freezers/id=1")
+        .uri("/api/freezers/1")
         .method("DELETE")
         .body(Body::empty())
         .unwrap();
-    let delete_response = ServiceExt::ready(&mut app)
+    let delete_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -332,17 +332,17 @@ async fn deletes_freezer_correctly() {
     assert_eq!(delete_response.status(), StatusCode::OK);
 
     let request = Request::builder()
-        .uri("/api/freezers/id=1")
+        .uri("/api/freezers/1")
         .body(Body::empty())
         .unwrap();
-    let check_response = ServiceExt::ready(&mut app)
+    let check_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
         .await
         .unwrap();
 
-    let body = hyper::body::to_bytes(check_response.into_body())
+    let body = axum::body::to_bytes(check_response.into_body(), usize::MAX)
         .await
         .unwrap();
 
@@ -357,7 +357,7 @@ async fn delete_returns_error_on_nonexistent_id() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/freezers/id=10")
+                .uri("/api/freezers/10")
                 .method("DELETE")
                 .body(Body::empty())
                 .unwrap(),
@@ -372,7 +372,7 @@ async fn delete_returns_error_on_nonexistent_id() {
         response.status().canonical_reason().unwrap()
     );
 
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let error_text = std::str::from_utf8(&body[..]).unwrap();
 
     assert_eq!(error_text, "This freezer id does not exist");

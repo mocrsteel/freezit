@@ -83,7 +83,7 @@ async fn get_storage_by_id_returns_correct_item() {
     assert!(storage_response.status().is_success());
 
 
-    let bytes = hyper::body::to_bytes(storage_response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(storage_response.into_body(), usize::MAX).await.unwrap();
     let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
     assert_eq!(response_vec.len(), 1);
@@ -109,7 +109,7 @@ async fn get_storage_by_id_returns_error_when_not_found() {
         "Expected internal server error"
     );
 
-    let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let error_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert_eq!(error_msg, "Storage item not found");
@@ -130,7 +130,7 @@ async fn creates_storage_correctly() {
     let new_storage =
         NewStorageItem::from(product.product_id, drawer.drawer_id, 325.5, Local::now().date_naive());
 
-    let create_response = ServiceExt::ready(&mut app)
+    let create_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -147,7 +147,7 @@ async fn creates_storage_correctly() {
         "Expected successful storage creation"
     );
 
-    let bytes = hyper::body::to_bytes(create_response.into_body())
+    let bytes = axum::body::to_bytes(create_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let storage_response = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
@@ -158,7 +158,7 @@ async fn creates_storage_correctly() {
         "Expected the result to only contain a single value"
     );
 
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -171,7 +171,7 @@ async fn creates_storage_correctly() {
     assert!(get_response.status().is_success());
 
     // Add return object check!
-    let bytes = hyper::body::to_bytes(get_response.into_body())
+    let bytes = axum::body::to_bytes(get_response.into_body(), usize::MAX)
         .await
         .unwrap();
     let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
@@ -212,7 +212,7 @@ async fn get_storage_root_returns_all_storage() {
 
     assert!(response.status().is_success());
 
-    let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
     assert_eq!(result_vec.len(), expected_vec.len());
@@ -243,7 +243,7 @@ async fn updates_storage_correctly() {
     let ctx = Context::new(Mod::Update.as_str());
     let mut app = app(Some(ctx.database_url())).await;
 
-    let query_result = ServiceExt::ready(&mut app)
+    let query_result = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -252,12 +252,12 @@ async fn updates_storage_correctly() {
                 .unwrap()
         ).await.unwrap();
 
-    let bytes = hyper::body::to_bytes(query_result.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(query_result.into_body(), usize::MAX).await.unwrap();
     let mut storage = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap()[0].clone();
     let product_name = PRODUCTS[3].1; // Name
     storage.product_name = String::from(product_name);
 
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -271,13 +271,13 @@ async fn updates_storage_correctly() {
 
     assert!(update_response.status().is_success());
 
-    let bytes = hyper::body::to_bytes(update_response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(update_response.into_body(), usize::MAX).await.unwrap();
     let update_result = &serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap()[0];
 
     assert_eq!(update_result.storage_id, 25);
     assert_eq!(update_result.product_name, product_name);
 
-    let check_db_response = ServiceExt::ready(&mut app)
+    let check_db_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -285,7 +285,7 @@ async fn updates_storage_correctly() {
                 .body(Body::empty()).unwrap()
         ).await.unwrap();
 
-    let bytes = hyper::body::to_bytes(check_db_response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(check_db_response.into_body(), usize::MAX).await.unwrap();
     let check_result = &serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap()[0];
 
     assert_eq!(check_result.storage_id, 25);
@@ -313,7 +313,7 @@ async fn update_storage_returns_error_when_not_found() {
 
     assert!(update_response.status().is_server_error());
 
-    let bytes = hyper::body::to_bytes(update_response.into_body()).await.unwrap();
+    let bytes = axum::body::to_bytes(update_response.into_body(), usize::MAX).await.unwrap();
     let error = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert_eq!(error, "Storage item not found")
@@ -324,7 +324,7 @@ async fn withdraw_updates_storage_correctly() {
     let ctx = Context::new(Mod::Withdraw.as_str());
     let mut app = app(Some(ctx.database_url())).await;
 
-    let withdraw_response = ServiceExt::ready(&mut app)
+    let withdraw_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -335,12 +335,12 @@ async fn withdraw_updates_storage_correctly() {
         ).await.unwrap();
 
     let (parts, body) = withdraw_response.into_parts();
-    let bytes = hyper::body::to_bytes(body).await.unwrap();
+    let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
     let _response_detail = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert_eq!(parts.status, StatusCode::OK);
 
-    let check_response = ServiceExt::ready(&mut app)
+    let check_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -352,7 +352,7 @@ async fn withdraw_updates_storage_correctly() {
     assert!(check_response.status().is_success());
 
     let storage_vec = serde_json::from_slice::<Vec<StorageResponse>>(
-        &hyper::body::to_bytes(check_response.into_body()).await.unwrap()
+        &axum::body::to_bytes(check_response.into_body(), usize::MAX).await.unwrap()
     )
         .unwrap()
         .into_iter()
@@ -381,7 +381,7 @@ async fn withdraw_storage_returns_error_when_not_found() {
 
     assert!(&parts.status.is_server_error(), "Expected an internal server error to be returned");
 
-    let bytes = hyper::body::to_bytes(body).await.unwrap();
+    let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
     let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert_eq!(err_msg, "Storage id not found, update failed");
@@ -392,7 +392,7 @@ async fn re_enter_updates_storage_correctly() {
     let ctx = Context::new(Mod::Withdraw.as_str());
     let mut app = app(Some(ctx.database_url())).await;
 
-    let withdraw_response = ServiceExt::ready(&mut app)
+    let withdraw_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -404,7 +404,7 @@ async fn re_enter_updates_storage_correctly() {
 
     assert!(withdraw_response.status().is_success(), "Withdraw step failed");
 
-    let re_enter_response = ServiceExt::ready(&mut app)
+    let re_enter_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -415,7 +415,7 @@ async fn re_enter_updates_storage_correctly() {
         ).await.unwrap();
 
     let (parts, body) = re_enter_response.into_parts();
-    let bytes = hyper::body::to_bytes(body).await.unwrap();
+    let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
     let _err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert!(parts.status.is_success(), "Re-enter was not successful");
@@ -438,7 +438,7 @@ async fn re_enter_storage_returns_error_when_not_found() {
 
     assert!(parts.status.is_server_error(), "Out of range id did not return error");
 
-    let bytes = hyper::body::to_bytes(body).await.unwrap();
+    let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
     let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     assert_eq!(err_msg, "Storage id not found, update failed");
@@ -449,7 +449,7 @@ async fn delete_storage_works_correctly() {
     let ctx = Context::new(Mod::Delete.as_str());
     let mut app = app(Some(ctx.database_url())).await;
 
-    let delete_response = ServiceExt::ready(&mut app)
+    let delete_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -461,7 +461,7 @@ async fn delete_storage_works_correctly() {
 
     assert!(delete_response.status().is_success(), "Delete was not successful");
 
-    let check_response = ServiceExt::ready(&mut app)
+    let check_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
         .call(
             Request::builder()
@@ -474,7 +474,7 @@ async fn delete_storage_works_correctly() {
 
     assert!(parts.status.is_server_error(), "Check of deleted id did not return error");
 
-    // let bytes = hyper::body::to_bytes(body).await.unwrap();
+    // let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
     // let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
     // For later. Did not implement a handler to check for the NotFound error from Pg.
@@ -516,7 +516,7 @@ mod storage_filters {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let err_msg = std::str::from_utf8(&bytes[..]).unwrap();
 
         assert_eq!(err_msg, "drawerName also requires freezerName as query parameters");
@@ -545,7 +545,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "productName filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -577,7 +577,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "drawerName and freezerName filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -606,7 +606,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "freezerName filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -634,7 +634,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "beforeIn filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -670,7 +670,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "expiresAfterDate filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -705,7 +705,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "expiresBeforeDate filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let response_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(response_vec, expected_storage_vec);
@@ -738,7 +738,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "isWithdrawn filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(result_vec, expected_vec);
@@ -764,7 +764,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "minWeight filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(result_vec, expected_vec);
@@ -790,7 +790,7 @@ mod storage_filters {
 
         assert!(response.status().is_success(), "maxWeight filter request was not successful");
 
-        let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let result_vec = serde_json::from_slice::<Vec<StorageResponse>>(&bytes).unwrap();
 
         assert_eq!(result_vec, expected_vec);

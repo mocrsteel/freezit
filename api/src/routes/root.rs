@@ -87,7 +87,7 @@ mod tests {
     async fn api_info_response() {
         let app = app(None).await;
         let api_version = env!("CARGO_PKG_VERSION");
-        let expected_body = Bytes::from(format!("Welcome to api v{}", api_version));
+        let expected_body = Bytes::from(format!("Welcome to api v{}", api_version)) ;
         let response = app
             .oneshot(Request::builder().uri("/api/info").body(Body::empty()).unwrap())
             .await
@@ -95,8 +95,10 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        // let body = Collected::to_bytes(response.into_body()).await.unwrap();
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         assert_eq!(body, expected_body);
+
     }
 
     #[tokio::test]
@@ -121,7 +123,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let json_response: Value = serde_json::from_slice(&body).unwrap();
 
         assert_eq!(json_response, expected_json);

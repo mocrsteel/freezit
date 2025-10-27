@@ -29,7 +29,7 @@ async fn creates_drawer_correctly() {
         .body(Body::from(serde_json::to_string(&new_drawer).unwrap()))
         .unwrap();
 
-    let create_response = ServiceExt::ready(&mut app)
+    let create_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(post_request)
@@ -43,7 +43,7 @@ async fn creates_drawer_correctly() {
         .method("GET")
         .body(Body::empty())
         .unwrap();
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(get_request)
@@ -52,7 +52,7 @@ async fn creates_drawer_correctly() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let response_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_drawers.len(), 1);
@@ -82,7 +82,7 @@ async fn returns_error_on_create_existing_name_freezer_id_combination() {
 
     assert_eq!(post_response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
-    let response_body = hyper::body::to_bytes(post_response.into_body()).await.unwrap();
+    let response_body = axum::body::to_bytes(post_response.into_body(), usize::MAX).await.unwrap();
     let response_text = std::str::from_utf8(&response_body[..]).unwrap();
 
     assert_eq!(response_text, "This drawer name already exists within this freezer")
@@ -119,7 +119,7 @@ async fn creates_drawer_correctly_on_existing_name() {
 
     assert_eq!(create_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(create_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX).await.unwrap();
     let response_drawer: Drawer = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_drawer.name, new_drawer.name);
@@ -142,7 +142,7 @@ async fn gets_all_drawers_without_query_params() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let response_vec: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_vec, expected_drawer_vec);
@@ -162,7 +162,7 @@ async fn gets_all_drawers_on_invalid_params() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let result_vec: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(result_vec.len(), DRAWERS.len());
@@ -184,7 +184,7 @@ async fn gets_correct_drawer_by_id() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let response_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_drawers.len(), 1);
@@ -212,7 +212,7 @@ async fn gets_correct_drawer_vec_by_name() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(drawers, expected_drawers);
@@ -239,7 +239,7 @@ async fn gets_correct_drawers_vec_by_freezer_id() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let response_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_drawers, expected_drawers);
@@ -261,7 +261,7 @@ async fn gets_correct_drawer_by_name_freezer_id_combination() {
 
     assert_eq!(get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let result_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(result_drawers.len(), 1);
@@ -288,7 +288,7 @@ async fn updates_drawer_correctly() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -297,7 +297,7 @@ async fn updates_drawer_correctly() {
                 .body(Body::empty())
                 .unwrap()
         ).await.unwrap();
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let mut update_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
     update_drawers[0].name = String::from("test update");
 
@@ -307,7 +307,7 @@ async fn updates_drawer_correctly() {
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&update_drawers[0]).unwrap()))
         .unwrap();
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(update_request)
@@ -316,7 +316,7 @@ async fn updates_drawer_correctly() {
 
     assert_eq!(update_response.status(), StatusCode::OK);
 
-    let check_response = ServiceExt::ready(&mut app)
+    let check_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -330,7 +330,7 @@ async fn updates_drawer_correctly() {
 
     assert_eq!(check_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(check_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(check_response.into_body(), usize::MAX).await.unwrap();
     let check_drawer: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(check_drawer, update_drawers);
@@ -341,7 +341,7 @@ async fn update_returns_error_on_existing_name_freezer_id_combination() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -352,7 +352,7 @@ async fn update_returns_error_on_existing_name_freezer_id_combination() {
         )
         .await
         .unwrap();
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let mut drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
     drawers[0].name = String::from("Schuif 2");
 
@@ -362,7 +362,7 @@ async fn update_returns_error_on_existing_name_freezer_id_combination() {
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&drawers[0]).unwrap()))
         .unwrap();
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -371,7 +371,7 @@ async fn update_returns_error_on_existing_name_freezer_id_combination() {
 
     assert_eq!(update_response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
-    let body = hyper::body::to_bytes(update_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(update_response.into_body(), usize::MAX).await.unwrap();
     let error_text = std::str::from_utf8(&body).unwrap();
 
     assert_eq!(error_text, "This drawer name already exists within this freezer")
@@ -382,7 +382,7 @@ async fn updates_drawer_name_correctly_on_existing_name_in_other_freezer() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
-    let get_response = ServiceExt::ready(&mut app)
+    let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -393,7 +393,7 @@ async fn updates_drawer_name_correctly_on_existing_name_in_other_freezer() {
         )
         .await
         .unwrap();
-    let body = hyper::body::to_bytes(get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(get_response.into_body(), usize::MAX).await.unwrap();
     let mut drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
     drawers[0].name = String::from("Schuif 5");
 
@@ -403,7 +403,7 @@ async fn updates_drawer_name_correctly_on_existing_name_in_other_freezer() {
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&drawers[0]).unwrap()))
         .unwrap();
-    let update_response = ServiceExt::ready(&mut app)
+    let update_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(request)
@@ -418,7 +418,7 @@ async fn deletes_drawer_correctly() {
     let ctx = Context::new(MOD);
     let mut app = app(Some(ctx.database_url())).await;
 
-    let delete_response = ServiceExt::ready(&mut app)
+    let delete_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -433,7 +433,7 @@ async fn deletes_drawer_correctly() {
 
     assert_eq!(delete_response.status(), StatusCode::OK);
 
-    let check_get_response = ServiceExt::ready(&mut app)
+    let check_get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
@@ -447,7 +447,7 @@ async fn deletes_drawer_correctly() {
 
     assert_eq!(check_get_response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(check_get_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(check_get_response.into_body(), usize::MAX).await.unwrap();
     let get_drawers: Vec<Drawer> = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(get_drawers.len(), 0);
@@ -468,7 +468,7 @@ async fn delete_returns_error_on_nonexistent_drawer_id() {
 
     assert_eq!(delete_response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
-    let body = hyper::body::to_bytes(delete_response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(delete_response.into_body(), usize::MAX).await.unwrap();
     let error_text = std::str::from_utf8(&body).unwrap();
 
     assert_eq!(error_text, "Drawer not found");

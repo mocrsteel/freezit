@@ -1,7 +1,8 @@
 // The code in this test does not work yet. For some reason the Client responds with an OS error 61.
 
 use axum::http::StatusCode;
-use hyper::{Body, Request};
+use axum::body::Body;
+use hyper::{Request};
 use tower::util::ServiceExt;
 
 use api::app;
@@ -53,7 +54,7 @@ async fn api_root_response() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
 
     assert_eq!(&body[..], expected_body);
 }

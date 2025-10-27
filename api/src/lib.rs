@@ -41,33 +41,33 @@ pub async fn app(db_url: Option<String>) -> Router {
         .route("/", get(products::get_all_products))
         .route("/", patch(products::update_product))
         .route("/create", post(products::create_product))
-        .route("/id=:id", get(products::get_product_by_id))
-        .route("/id=:id", delete(products::delete_product))
-        .route("/name=:name", get(products::get_product_by_name))
-        .route("/expiration=:expiration", get(products::get_products_by_expiration));
+        .route("/{id}", get(products::get_product_by_id))
+        .route("/{id}", delete(products::delete_product))
+        .route("/name={name}", get(products::get_product_by_name))
+        .route("/expiration={expiration}", get(products::get_products_by_expiration));
 
     let freezer_subroutes = Router::new()
         .route("/", get(freezers::get_all_freezers))
         .route("/", patch(freezers::update_freezer))
         .route("/create", post(freezers::create_freezer))
-        .route("/id=:id", get(freezers::get_freezer_by_id))
-        .route("/id=:id", delete(freezers::delete_freezer))
-        .route("/name=:name", get(freezers::get_freezer_by_name));
+        .route("/{id}", get(freezers::get_freezer_by_id))
+        .route("/{id}", delete(freezers::delete_freezer))
+        .route("/name={name}", get(freezers::get_freezer_by_name));
 
     let drawer_subroutes = Router::new()
         .route("/", get(drawers::get_drawers))
         .route("/", post(drawers::create_drawer))
         .route("/", patch(drawers::update_drawer))
-        .route("/:id", delete(drawers::delete_drawer));
+        .route("/{id}", delete(drawers::delete_drawer));
 
     let storage_subroutes = Router::new()
         .route("/", get(storage::get_storage))
-        .route("/:id", get(storage::get_storage_by_id))
+        .route("/{id}", get(storage::get_storage_by_id))
         .route("/", post(storage::create_storage))
         .route("/", patch(storage::update_storage))
-        .route("/:id/withdraw", patch(storage::withdraw_storage))
-        .route("/:id/re-enter", patch(storage::re_enter_storage))
-        .route("/:id", delete(storage::delete_storage));
+        .route("/{id}/withdraw", patch(storage::withdraw_storage))
+        .route("/{id}/re-enter", patch(storage::re_enter_storage))
+        .route("/{id}", delete(storage::delete_storage));
 
     let api_subroutes = Router::new()
         .route("/", get(|| async { "API active" }))

@@ -29,10 +29,10 @@ async fn main() {
         });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     tracing::debug!("listening on {} at port {}", addr.ip(), addr.port());
 
-    hyper::Server::bind(&addr)
-        .serve(app(None).await.into_make_service())
+    axum::serve(listener, app(None).await.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap_or_else(|err| {

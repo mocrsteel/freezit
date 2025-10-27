@@ -4,3 +4,4 @@ pub mod freezers;
 pub mod drawers;
 pub mod products;
 pub mod storage;
+mod users;
