@@ -1,7 +1,7 @@
 import { dummyFreezerResponse } from "@/assets/dummy-data";
 import { FaPlus, FaSnowflake } from "react-icons/fa6";
 import { BiArchive } from "react-icons/bi";
-import { TextInput } from "@components/forms/input";
+import { TextInput } from "@/components/forms/input";
 
 const FormDivider = () => {
   return <div className="h-[1px] bg-apple-800/40 mt-1 mb-6 " />;
@@ -22,8 +22,8 @@ export default function EditFreezer({ id }: { id: string }) {
   const freezer = freezers[0];
   const drawers = freezer.drawers;
   return (
-    <div className="w-full flex flex-col items-center pt-4">
-      <div className="flex flex-col w-2/3 max-w-[400px] items-center">
+    <div className="w-full flex flex-col items-center pt-2 md:pt-4">
+      <div className="flex flex-col w-full md:w-2/3 max-w-[400px] items-center">
         <form className="text-gray-800 w-full">
           <p className="font-bold text-xl w-full">Freezer</p>
           <p className="text-xs text-gray-600 w-full">

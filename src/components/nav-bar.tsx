@@ -5,8 +5,6 @@ import Link from "next/link";
 import {usePathname} from 'next/navigation'
 import React from "react";
 
-// import style from '@styles/navbar.module.scss'
-
 interface NavLinkProps {
   title: string,
   href: string,

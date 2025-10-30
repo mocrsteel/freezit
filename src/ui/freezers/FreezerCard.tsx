@@ -1,4 +1,4 @@
-import {CardContainer, CardContent, CardHeader} from "../../components/Card";
+import {CardContainer, CardContent, CardHeader} from "@/components/Card";
 
 type CardProps = {
   key: string,
@@ -7,7 +7,7 @@ type CardProps = {
 
 export function FreezerCard({key, freezer}: CardProps) {
   return (
-    <CardContainer key={key}>
+    <CardContainer>
       <CardHeader title={freezer.name} editLink={`freezers/${freezer.freezerId}`}/>
       <CardContent>
         <div className="flex flex-col w-1/2 pl-4">

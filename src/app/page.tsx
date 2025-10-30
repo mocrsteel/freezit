@@ -12,9 +12,8 @@ import {Bar} from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import React, {useState, useEffect} from "react";
 
-import ActionButton from "@components/action-button";
+import ActionButton from "@/components/action-button";
 import {dummyStorageCount, dummyExpiresNext} from "@/assets/dummy-data";
-import Link from "next/link";
 
 // Tree shaking to reduce amount of imported modules.
 Chart.register(

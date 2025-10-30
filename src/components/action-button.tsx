@@ -1,8 +1,6 @@
 import {FaUpRightFromSquare, FaPlus} from "react-icons/fa6";
 import Link from "next/link";
 
-// import style from "@styles/action-button.module.scss"
-
 type ActionHref = |
   "/storage/withdraw" |
   "/storage/create" |

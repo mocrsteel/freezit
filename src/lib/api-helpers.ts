@@ -1,9 +1,9 @@
-import { dummyFreezerResponse, dummyStorage } from "../assets/dummy-data"
+import { dummyFreezerResponse, dummyStorage } from "@/assets/dummy-data"
 
 
 /**
  * Gets a single DisplayFreezer from the backend, based on its freezerId
- * @param id 
+ * @param id
  * @returns a single DisplayFreezer
  */
 export const getDisplayFreezer = (id: number): DisplayFreezer => {

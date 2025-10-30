@@ -20,13 +20,15 @@
  */
 import {useState} from 'react';
 import Link from 'next/link';
-import FilterButtons from "@components/filter-buttons";
+import FilterButtons from "@/components/filter-buttons";
 import {FaPenClip, FaTrashCan} from "react-icons/fa6"
 import {createColumnHelper, getCoreRowModel, useReactTable} from "@tanstack/react-table";
 
-import Table from '@components/table'
-import ActionButton from "@components/action-button"
+import Table from '@/components/table'
+import ActionButton from "@/components/action-button"
 import {dummyStorage} from "@/assets/dummy-data";
+import StorageCard from "@/ui/storage/StorageCard"
+import {CardGrid} from "@/components/Card";
 
 /* Made for UI checking of overflowing and scrolling. DELETE LATER */
 const dummyStorageExtended = dummyStorage.concat(
@@ -43,54 +45,63 @@ const dummyStorageExtended = dummyStorage.concat(
     return arr
   }, [])
 )
-
-const columnHelper = createColumnHelper<Api.StorageResponse>()
-const columns = [
-  columnHelper.accessor('storageId', {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>ID</span>,
-  }),
-  columnHelper.accessor('productName', {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>Product</span>
-  }),
-  columnHelper.accessor('weightGrams', {
-    cell: info => <i>{info.getValue() + ' '} g</i>,
-    header: () => <span>Weight</span>,
-  }),
-  columnHelper.accessor('freezerName', {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>Freezer</span>,
-  }),
-  columnHelper.accessor('drawerName', {
-    cell: info => <i>{info.getValue()}</i>,
-    header: () => <span>Drawer</span>,
-  }),
-  columnHelper.accessor('expirationDate', {
-    cell: info => <i>{info.getValue().toDateString()}</i>,
-    header: () => <span>Expiration Date</span>,
-  }),
-  columnHelper.display({
-    id: 'actions',
-    cell: () => <span className="flex flex-row flex-nowrap gap-1"><FaPenClip/>{"\t"}<FaTrashCan/></span>
-  })
-]
+//
+// const columnHelper = createColumnHelper<Api.StorageResponse>()
+// const columns = [
+//   columnHelper.accessor('storageId', {
+//     cell: info => <i>{info.getValue()}</i>,
+//     header: () => <span>ID</span>,
+//   }),
+//   columnHelper.accessor('productName', {
+//     cell: info => <i>{info.getValue()}</i>,
+//     header: () => <span>Product</span>
+//   }),
+//   columnHelper.accessor('weightGrams', {
+//     cell: info => <i>{info.getValue() + ' '} g</i>,
+//     header: () => <span>Weight</span>,
+//   }),
+//   columnHelper.accessor('freezerName', {
+//     cell: info => <i>{info.getValue()}</i>,
+//     header: () => <span>Freezer</span>,
+//   }),
+//   columnHelper.accessor('drawerName', {
+//     cell: info => <i>{info.getValue()}</i>,
+//     header: () => <span>Drawer</span>,
+//   }),
+//   columnHelper.accessor('expirationDate', {
+//     cell: info => <i>{info.getValue().toDateString()}</i>,
+//     header: () => <span>Expiration Date</span>,
+//   }),
+//   columnHelper.display({
+//     id: 'actions',
+//     cell: () => <span className="flex flex-row flex-nowrap gap-1"><FaPenClip/>{"\t"}<FaTrashCan/></span>
+//   })
+// ]
 
 const Storage = () => {
   const [data, setData] = useState<Api.StorageResponse[]>(() => [...dummyStorageExtended])
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const table = useReactTable({columns, data, getCoreRowModel: getCoreRowModel()})
+  // const [showModal, setShowModal] = useState<boolean>(false);
+  // const table = useReactTable({columns, data, getCoreRowModel: getCoreRowModel()})
   return (
-    <div className={'content'}>
-      <FilterButtons/>
-      <Table columns={columns} data={data}/>
-      <Link href={"/storage/withdraw"}><button>Withdraw an item</button></Link>
-      <ActionButton
-        id={"btn-storage-add"}
-        action="add"
-        href="/storage/add"
-      />
-    </div>
+    <>
+      <CardGrid>
+        {data &&
+          data.map((storage, index) => {
+            return <StorageCard key={"storage-" + index.toString()} storage={storage} />
+          })
+        }
+      </CardGrid>
+      <ActionButton id="storage-add-button" action="add" href="/storage/create" />
+    </>
+    // <div className={'content'}>
+    //   {/*<FilterButtons/>*/}
+    //   {/*<Table columns={columns} data={data}/>*/}
+    //   {/*<Link href={"/storage/withdraw"}><button>Withdraw an item</button></Link>*/}
+    //   {/*  id={"btn-storage-add"}*/}
+    //   {/*  action="add"*/}
+    //   {/*  href="/storage/add"*/}
+    //   {/*/>*/}
+    // </div>
   )
 }
 
