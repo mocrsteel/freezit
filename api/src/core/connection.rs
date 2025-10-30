@@ -14,11 +14,13 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
 /// Database connection. Can be set using a String for end-to-end testing.
 pub fn establish_connection(db_uri: Option<String>) -> PgConnection {
+
     #[cfg(not(test))]
     let database_url = db_uri.unwrap_or_else(|| {
         dotenv().ok();
         env::var("DATABASE_URL").expect("DATABASE_URL must be set")
     });
+
     #[cfg(test)]
     let database_url = db_uri.unwrap_or_else(|| {
         panic!("DATABASE_URL must be set")

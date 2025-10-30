@@ -6,6 +6,9 @@ authors = ["mocrsteel <https://github.com/mocrsteel>"]
 repository = "https://github.com/mocrsteel/freezit"
 default-run = "api"
 
+[[bin]]
+name = "playground"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -33,7 +36,3 @@ typeshare = "1.0.4"
 
 [dev-dependencies]
 tower = { version = "0.5.2", features = ["util"] }
-
-[[bin]]
-name = "playground"
-
