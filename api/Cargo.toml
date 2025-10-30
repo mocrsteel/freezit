@@ -14,13 +14,14 @@ name = "playground"
 [dependencies]
 axum = { version = "0.8.6", features = ["tower-log", "tracing", "tokio"] }
 chrono = { version = "0.4.42", features=["serde"] }
-diesel = { version = "2.3.3", features = ["postgres", "chrono"] }
+diesel = { version = "2.3.3", features = ["postgres", "chrono", "uuid"] }
 diesel_migrations = { version = "2.3.0", features = ["postgres"] }
 dotenvy = "0.15.7"
 env_logger = "0.11.8"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"]}
+jsonwebtoken = { version = "10.1.0", features = ["rust_crypto"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
 regex = "1.10.2"
@@ -33,6 +34,7 @@ tower-http = { version = "0.6.6", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 typeshare = "1.0.4"
+uuid = { version = "1.18.1", features = ["serde", "v7", "v4"] }
 
 [dev-dependencies]
 tower = { version = "0.5.2", features = ["util"] }
