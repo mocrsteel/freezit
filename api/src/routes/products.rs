@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{StatusCode, HeaderMap},
     response::Json,
 };
 use diesel::prelude::*;
@@ -14,7 +14,8 @@ use crate::core::{
     error::internal_error
 };
 use crate::models::{NewProduct, Product};
-use crate::AppState;
+use crate::router::AppState;
+use crate::core::auth::extract_headers_uuid;
 
 /// Get a product entry by its ID, given as a path parameter: `GET /api/products/id=<i32>`.
 ///
@@ -26,14 +27,18 @@ use crate::AppState;
 ///
 /// * `NotFound` => "Product not found".
 pub async fn get_product_by_id(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(request_id): Path<i32>,
 ) -> Result<Json<Product>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
     let res = products
-        .filter(product_id.eq(id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(request_id))
         .select(Product::as_select())
         .first(conn)
         .map_err(internal_error)?;
@@ -51,13 +56,17 @@ pub async fn get_product_by_id(
 ///
 /// * `NotFound` => "Product not found".
 pub async fn get_product_by_name(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Path(query_name): Path<String>,
 ) -> Result<Json<Product>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
     let res = products
+        .filter(user_id.eq(uuid))
         .filter(name.eq(query_name))
         .select(Product::as_select())
         .first(conn)
@@ -77,13 +86,17 @@ pub async fn get_product_by_name(
 ///
 /// * `ExpirationNotFound` => "No products defined with this expiration time".
 pub async fn get_products_by_expiration(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Path(query_expiration): Path<i32>,
 ) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
     let res: Vec<Product> = products
+        .filter(user_id.eq(uuid))
         .filter(expiration_months.eq(query_expiration))
         .get_results(conn)
         .map_err(internal_error)?;
@@ -101,12 +114,18 @@ pub async fn get_products_by_expiration(
 ///
 /// * `NotFound` => "Product not found". Only returned on an empty database.
 pub async fn get_all_products(
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Product>>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
-    let res = products.load::<Product>(conn).map_err(internal_error)?;
+    let res = products
+        .filter(user_id.eq(uuid))
+        .get_results(conn)
+        .map_err(internal_error)?;
 
     Ok(Json(res))
 }
@@ -126,14 +145,18 @@ pub async fn get_all_products(
 ///
 /// * `Duplicate` => "This product name already exists".
 pub async fn create_product(
+    headers: HeaderMap,
     State(state): State<AppState>,
     new_product: Json<NewProduct>,
 ) -> Result<Json<Product>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
     let new_product = new_product.deref().to_owned();
 
     let name_query = products
+        .filter(user_id.eq(uuid))
         .filter(name.eq(&new_product.name))
         .get_results::<Product>(conn)
         .map_err(internal_error)?;
@@ -143,6 +166,13 @@ pub async fn create_product(
             StatusCode::INTERNAL_SERVER_ERROR,
             String::from("This product name already exists"),
         ));
+    }
+    
+    if new_product.user_id != uuid {
+        return Err((
+            StatusCode::FORBIDDEN,
+            String::from("Authenticated User ID does not match user_id of product.")
+            ))
     }
 
     let res = diesel::insert_into(products)
@@ -172,15 +202,19 @@ pub async fn create_product(
 /// * `NotFound` => "Product not found". Returned when a wrong product_id was entered.
 ///
 pub async fn update_product(
+    headers: HeaderMap,
     State(state): State<AppState>,
     update_product: Json<Product>,
 ) -> Result<Json<Product>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
     let updated_product = update_product.deref().to_owned();
 
     let name_lookup = products
-        .filter(product_id.ne(&update_product.product_id))
+        .filter(user_id.eq(uuid))
+        .filter(id.ne(&update_product.id))
         .filter(name.eq(&update_product.name))
         .get_results::<Product>(conn)
         .map_err(internal_error)?;
@@ -193,7 +227,8 @@ pub async fn update_product(
     }
 
     let res = diesel::update(products)
-        .filter(product_id.eq(&updated_product.product_id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(&updated_product.id))
         .set(&updated_product)
         .returning(Product::as_returning())
         .get_result(conn)
@@ -218,14 +253,18 @@ pub async fn update_product(
 /// * `NotFound` => "Product not found". Returned when a wrong product_id was entered.
 ///
 pub async fn delete_product(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(request_id): Path<i32>,
 ) -> Result<Json<i32>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+    
     use crate::schema::products::dsl::*;
     let conn = &mut establish_connection(state.db_url);
 
     let id_query = products
-        .find(id)
+        .filter(user_id.eq(uuid))
+        .find(request_id)
         .get_results::<Product>(conn)
         .map_err(internal_error)?;
     if id_query.is_empty() {
@@ -236,11 +275,12 @@ pub async fn delete_product(
     }
 
     diesel::delete(products)
-        .filter(product_id.eq(id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(request_id))
         .execute(conn)
         .map_err(internal_error)?;
 
-    Ok(Json(id))
+    Ok(Json(request_id))
 }
 
 /// Counts the amount of occurrences of a product in the storage table:

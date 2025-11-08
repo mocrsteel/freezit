@@ -27,6 +27,7 @@
 //! ```
 
 use axum::http::StatusCode;
+use thiserror::Error;
 
 /// Wrapper for internal database connector errors, returning [StatusCode] 500 with the stringyfied
 /// database connector error to be consumed by the frontend.
@@ -37,3 +38,24 @@ pub fn internal_error<E>(err: E) -> (StatusCode, String)
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
 
+/// Representation of Api specific errors with nicer information for the specific cases.
+#[derive(Debug, Error)]
+pub enum ApiError {
+    /// Error linked to authorization: JWT initializing.
+    #[error("API authorization error: {0}")]
+    Authorization(String),
+    /// Error linked to incomplete or invalid request authorization headers.
+    #[error("Invalid authorization header: expected {expected:?}, found {found:?}")]
+    AuthorizationHeader {
+        /// Expected value.
+        expected: String,
+        /// Value that was found.
+        found: String,
+    },
+    /// Errors linked to database interactions.
+    #[error("Database error: {0}")]
+    Database(String),
+    /// Json Web Token decode error.
+    #[error("JWT decode error: {0}")]
+    JWTDecode(String),
+}

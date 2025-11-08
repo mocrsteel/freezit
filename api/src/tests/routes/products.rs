@@ -1,6 +1,7 @@
-use crate::common::db_data::PRODUCTS;
-use crate::common::db::Context;
-use api::app;
+use crate::models::{NewProduct, Product, ProductTuple};
+use crate::router::router;
+use crate::tests::common::db_data::PRODUCTS;
+use crate::tests::common::db::Context;
 
 use log::{info};
 use axum::{
@@ -10,14 +11,13 @@ use axum::{
 use hyper::StatusCode;
 use serde_json::{json, Value};
 use tower::{Service, ServiceExt};
-use api::models::{NewProduct, Product, ProductTuple};
 
 static MOD: &str = "router_products";
 
 #[tokio::test]
 async fn get_product_by_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let query_id = 1;
 
     let response = app
@@ -48,7 +48,7 @@ async fn get_product_by_id() {
 #[tokio::test]
 async fn get_product_by_name() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let query_name = "Brocoli";
     let response = app
         .oneshot(Request::builder()
@@ -76,7 +76,7 @@ async fn get_product_by_name() {
 #[tokio::test]
 async fn get_all_products() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let expected_response = Product::from_vec(PRODUCTS.to_vec());
     let response = app.oneshot(
             Request::builder()
@@ -98,7 +98,7 @@ async fn get_all_products() {
 #[tokio::test]
 async fn get_products_by_expiration() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let query_expiration = 12;
 
     let response = app
@@ -126,7 +126,7 @@ async fn get_products_by_expiration() {
 #[tokio::test]
 async fn create_product_simple_test() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let new_product = NewProduct {
         name: String::from("New Produce"),
         expiration_months: Some(24),
@@ -146,7 +146,7 @@ async fn create_product_simple_test() {
 #[tokio::test]
 async fn create_product() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
     let new_product = NewProduct {
         name: String::from("New Produce"),
         expiration_months: Some(24),
@@ -187,7 +187,7 @@ async fn create_product() {
 #[tokio::test]
 async fn cannot_create_existing_product() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
     let new_product = NewProduct {
         name: String::from("Brocoli"),
         expiration_months: Some(24),
@@ -215,7 +215,7 @@ async fn cannot_create_existing_product() {
 #[tokio::test]
 async fn update_product() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
     let product_name = "Brocoli";
 
     let request = Request::builder()
@@ -265,7 +265,7 @@ async fn update_product() {
 #[tokio::test]
 async fn cannot_change_product_name_to_existing() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
     let product_name = PRODUCTS[1].1;
     let other_product_name = PRODUCTS[3].1;
 
@@ -314,7 +314,7 @@ async fn cannot_change_product_name_to_existing() {
 #[tokio::test]
 async fn delete_product() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
     let id = 1;
 
     let delete_request = Request::builder()
@@ -350,7 +350,7 @@ async fn delete_product() {
 #[tokio::test]
 async fn delete_nonexistent_product_returns_error() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let res = app
         .oneshot(

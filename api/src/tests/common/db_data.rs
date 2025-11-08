@@ -1,5 +1,16 @@
 #![allow(dead_code)]
+#![cfg(test)]
 //! Intended to contain data loaded into database by script "api/db/setup_test_db.sh".
+
+use uuid::{Uuid, uuid};
+
+/// User entries with fixed UUID for testing.
+/// (Uuid, name, email)
+pub static USERS: [(&str, &str, &str); 2] = [
+    ("" , "Jan Peeters", "jan.peeters@gmail.com"),
+    ("" , "Jos Van Breendonck", "jos.van.breendonck@yahoo.com"),
+];
+
 
 pub static PRODUCTS: [(i32, &str, i32); 8] = [
         (1, "Brocoli", 12),

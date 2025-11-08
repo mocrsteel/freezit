@@ -29,26 +29,28 @@
 //! * storage_id
 //! * storage in general, but filtered on possible filters given in [StorageFilter]. All are to be defined in a query parameter: `/api/storage?productName=Brocoli`.
 //!
-use std::fmt::Debug;
-use std::ops::Deref;
-use std::sync::Arc;
 use axum::extract::{Path, Query, State};
+use axum::http::HeaderMap;
 use axum::Json;
-use chrono::{NaiveDate, Local};
+use chrono::{Local, NaiveDate};
 use diesel::prelude::*;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+use std::ops::Deref;
+use std::sync::Arc;
 use struct_iterable::Iterable;
 use typeshare::typeshare;
 
-use crate::{AppState, schema};
+use crate::core::auth::extract_headers_uuid;
 use crate::core::connection::establish_connection;
 use crate::core::error::internal_error;
 use crate::core::query::{empty_string_as_none, ExpirationData};
 use crate::models::*;
-use crate::schema::freezers::dsl as freezers_dsl;
 use crate::schema::drawers::dsl as drawers_dsl;
+use crate::schema::freezers::dsl as freezers_dsl;
 use crate::schema::products::dsl as products_dsl;
+use crate::{schema, router::AppState};
 
 /// Struct containing the possible query parameters to query the storage table of the database.
 /// As the complexity of these  queries can increase pretty fast, some handlers and checks are built to parse the
@@ -98,7 +100,10 @@ impl StorageFilter {
     /// Checks if the query meets constraints to be respected. See [get_storage] docs for the constraints in place.
     pub fn parse(&self) -> Result<(), (StatusCode, String)> {
         if self.drawer_name.is_some() && self.freezer_name.is_none() {
-            return Err((StatusCode::BAD_REQUEST, String::from("drawerName also requires freezerName as query parameters")));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                String::from("drawerName also requires freezerName as query parameters"),
+            ));
         }
         // Obsolete if we keep freezer_id out of the filter parameters.
         // if self.freezer_name.is_some() && self.freezer_id.is_some() {
@@ -109,7 +114,10 @@ impl StorageFilter {
             let date_expires = self.expires_after_date.unwrap();
 
             if date_in >= date_expires {
-                return Err((StatusCode::BAD_REQUEST, String::from("inBefore cannot be later than expiresAfterDate")));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    String::from("inBefore cannot be later than expiresAfterDate"),
+                ));
             }
         }
         if self.expires_before_date.is_some() && self.expires_after_date.is_some() {
@@ -117,13 +125,21 @@ impl StorageFilter {
             let after = self.expires_after_date.unwrap();
 
             if before <= after {
-                return Err((StatusCode::BAD_REQUEST, String::from("expiresBeforeDate canot be equal or earlier than expiresAfterDate")));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    String::from(
+                        "expiresBeforeDate canot be equal or earlier than expiresAfterDate",
+                    ),
+                ));
             }
         }
         let min_weight = self.min_weight.unwrap();
         let max_weight = self.max_weight.unwrap();
         if min_weight >= max_weight {
-            return Err((StatusCode::BAD_REQUEST, String::from("minWeight must be smaller than maxWeight")))
+            return Err((
+                StatusCode::BAD_REQUEST,
+                String::from("minWeight must be smaller than maxWeight"),
+            ));
         }
 
         Ok(())
@@ -164,7 +180,7 @@ impl StorageResponse {
             .map(|(stor, prod, draw, freez)| {
                 let expiration_data = ExpirationData::new(stor.date_in, prod.expiration_months);
                 StorageResponse {
-                    storage_id: stor.storage_id,
+                    storage_id: stor.id,
                     product_name: prod.name,
                     freezer_name: freez.name,
                     drawer_name: draw.name,
@@ -181,14 +197,14 @@ impl StorageResponse {
 impl PartialEq for StorageResponse {
     fn eq(&self, other: &Self) -> bool {
         self.storage_id == other.storage_id
-        && self.product_name == other.product_name
-        && self.freezer_name == other.freezer_name
-        && self.drawer_name == other.drawer_name
-        && (self.weight_grams - other.weight_grams).abs() <= 1e-6
-        && self.expires_in_days == other.expires_in_days
-        && self.expiration_date == other.expiration_date
-        && self.in_storage_since == other.in_storage_since
-        && self.out_storage_since == other.out_storage_since
+            && self.product_name == other.product_name
+            && self.freezer_name == other.freezer_name
+            && self.drawer_name == other.drawer_name
+            && (self.weight_grams - other.weight_grams).abs() <= 1e-6
+            && self.expires_in_days == other.expires_in_days
+            && self.expiration_date == other.expiration_date
+            && self.in_storage_since == other.in_storage_since
+            && self.out_storage_since == other.out_storage_since
     }
 }
 
@@ -226,16 +242,23 @@ fn is_withdrawn_default() -> Option<bool> {
 /// # Returns
 ///
 /// Vec<[Storage]>
-pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFilter>) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+pub async fn get_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    params: Query<StorageFilter>,
+) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
     params.parse()?;
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+
     use schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
     let mut query = storage
+        .filter(user_id.eq(uuid))
         .inner_join(products_dsl::products)
         .inner_join(drawers_dsl::drawers)
-        .inner_join(freezers_dsl::freezers.on(freezers_dsl::freezer_id.eq(drawers_dsl::freezer_id)))
+        .inner_join(freezers_dsl::freezers.on(freezers_dsl::id.eq(drawers_dsl::id)))
         .into_boxed();
 
     if params.product_name.is_some() {
@@ -268,8 +291,13 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
         .filter(weight_grams.ge(params.min_weight.as_ref().unwrap()));
 
     let storage_results = query
-        .select((Storage::as_select(), Product::as_select(), Drawer::as_select(), Freezer::as_select()))
-        .order_by(storage_id)
+        .select((
+            Storage::as_select(),
+            Product::as_select(),
+            Drawer::as_select(),
+            Freezer::as_select(),
+        ))
+        .order_by(id)
         .load::<(Storage, Product, Drawer, Freezer)>(conn)
         // .get_results::<Storage>(conn)
         .map_err(internal_error)?;
@@ -277,15 +305,11 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
 
     // Expiration filters, calculated after search in database.
     let zipped_result = match params.expires_in_days {
-        Some(days) => {
-            zipped_result
-                .into_iter()
-                .filter(|data| {
-                    data.expires_in_days <= days.into()
-                })
-                .collect::<Vec<StorageResponse>>()
-        }
-        None => zipped_result
+        Some(days) => zipped_result
+            .into_iter()
+            .filter(|data| data.expires_in_days <= days.into())
+            .collect::<Vec<StorageResponse>>(),
+        None => zipped_result,
     };
     let zipped_result = match params.expires_after_date {
         Some(date) => {
@@ -295,7 +319,8 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
                 .filter(move |data| {
                     let date = Arc::clone(&max_expiration_date);
                     data.expiration_date >= *date
-                }).collect::<Vec<StorageResponse>>()
+                })
+                .collect::<Vec<StorageResponse>>()
         }
         None => zipped_result,
     };
@@ -313,7 +338,6 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
         None => zipped_result,
     };
 
-
     Ok(Json(zipped_result))
 }
 
@@ -322,22 +346,37 @@ pub async fn get_storage(State(state): State<AppState>, params: Query<StorageFil
 /// # Returns
 ///
 /// [Storage]
-pub async fn get_storage_by_id(State(state): State<AppState>, Path(id): Path<i32>) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+pub async fn get_storage_by_id(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Path(request_id): Path<i32>,
+) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers, &state).map_err(internal_error)?;
+
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
     let storage_results = storage
+        .filter(user_id.eq(uuid))
         .inner_join(products_dsl::products) // .on(products_dsl::product_id.eq(product_id))
         .inner_join(drawers_dsl::drawers) // .on(drawers_dsl::drawer_id.eq(drawer_id))
-        .inner_join(freezers_dsl::freezers.on(freezers_dsl::freezer_id.eq(drawers_dsl::freezer_id)))
-        .filter(storage_id.eq(id))
-        .select((Storage::as_select(), Product::as_select(), Drawer::as_select(), Freezer::as_select()))
+        .inner_join(freezers_dsl::freezers.on(freezers_dsl::id.eq(drawers_dsl::freezer_id)))
+        .filter(id.eq(request_id))
+        .select((
+            Storage::as_select(),
+            Product::as_select(),
+            Drawer::as_select(),
+            Freezer::as_select(),
+        ))
         .load::<(Storage, Product, Drawer, Freezer)>(conn)
         .map_err(internal_error)?;
 
     if storage_results.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage item not found")));
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Storage item not found"),
+        ));
     }
 
     let result = StorageResponse::from_query_result(storage_results);
@@ -358,18 +397,24 @@ pub async fn get_storage_by_id(State(state): State<AppState>, Path(id): Path<i32
 /// # Errors
 ///
 /// * Can't have a duplicate error on this one.
-pub async fn create_storage(State(state): State<AppState>, new_storage_item: Json<NewStorageItem>) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+pub async fn create_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    new_storage_item: Json<NewStorageItem>,
+) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+    // let uuid = extract_headers_uuid(headers.clone(), &state).map_err(internal_error)?;
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url.clone());
     let new_storage_item = new_storage_item.deref();
     let insert_result = diesel::insert_into(storage)
         .values(new_storage_item)
-        .returning(storage_id)
+        .returning(id)
         .get_results::<i32>(conn)
         .map_err(internal_error)?;
 
-    get_storage_by_id(State(state), Path(insert_result[0])).await
+    // Return the created storage item.
+    get_storage_by_id(headers, State(state), Path(insert_result[0])).await
 }
 
 /// Update an existing storage entry: `PATCH /api/storage`.
@@ -386,53 +431,76 @@ pub async fn create_storage(State(state): State<AppState>, new_storage_item: Jso
 /// # Errors
 ///
 /// * `DuplicateError`: Storage ID already taken, usually caused by a database error.
-pub async fn update_storage(State(state): State<AppState>, updated_storage_frontend: Json<StorageResponse>) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)>{
+pub async fn update_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    updated_storage_frontend: Json<StorageResponse>,
+) -> Result<Json<Vec<StorageResponse>>, (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers.clone(), &state).map_err(internal_error)?;
+
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url.clone());
 
     let storage_entry = storage
-        .filter(storage_id.eq(&updated_storage_frontend.storage_id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(&updated_storage_frontend.storage_id))
         .select(Storage::as_select())
         .get_results::<Storage>(conn)
         .map_err(internal_error)?;
+    // TODO: This code can potentially be simplyfied by using get_result(conn), which will return an error if nothing is found.
     if storage_entry.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage item not found")))
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Storage item not found"),
+        ));
     }
     let storage_entry = &storage_entry[0];
     let product = products_dsl::products
+        .filter(products_dsl::user_id.eq(uuid))
         .filter(products_dsl::name.eq(&updated_storage_frontend.product_name))
         .select(Product::as_select())
         .load::<Product>(conn)
         .map_err(internal_error)?;
+    // TODO: Same comment as storage query.
     if product.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Product name not found")));
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Product name not found"),
+        ));
     }
     let product = &product[0];
     let drawer = drawers_dsl::drawers
         .inner_join(freezers_dsl::freezers)
+        .filter(drawers_dsl::user_id.eq(uuid))
+        .filter(freezers_dsl::user_id.eq(uuid))
         .filter(drawers_dsl::name.eq(&updated_storage_frontend.drawer_name))
         .filter(freezers_dsl::name.eq(&updated_storage_frontend.freezer_name))
         .select((Drawer::as_select(), Freezer::as_select()))
         .load::<(Drawer, Freezer)>(conn)
         .map_err(internal_error)?;
     if drawer.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Combination of freezerName and drawerName not found")))
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Combination of freezerName and drawerName not found"),
+        ));
     }
     let (drawer, freezer) = &drawer[0];
 
     let updated_storage_frontend = updated_storage_frontend.deref();
     let update_storage = Storage {
-        storage_id: storage_entry.storage_id,
-        product_id: product.product_id,
-        drawer_id: drawer.drawer_id,
+        id: storage_entry.id,
+        product_id: product.id,
+        drawer_id: drawer.id,
         weight_grams: updated_storage_frontend.weight_grams,
         date_in: updated_storage_frontend.in_storage_since,
         date_out: storage_entry.date_out,
+        user_id: uuid,
     };
 
     let update_result = diesel::update(storage)
-        .filter(storage_id.eq(&update_storage.storage_id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(&update_storage.id))
         .set(&update_storage)
         .returning(Storage::as_returning())
         .get_result(conn)
@@ -440,7 +508,7 @@ pub async fn update_storage(State(state): State<AppState>, updated_storage_front
 
     let expiration = ExpirationData::new(update_result.date_in, product.expiration_months);
     let response = StorageResponse {
-        storage_id: update_result.storage_id,
+        storage_id: update_result.id,
         product_name: product.name.clone(),
         freezer_name: freezer.name.clone(),
         drawer_name: drawer.name.clone(),
@@ -466,19 +534,29 @@ pub async fn update_storage(State(state): State<AppState>, updated_storage_front
 ///
 /// * `AvailabilityError`: already not available.
 /// * `ExpirationError`: storage item has expired.
-pub async fn withdraw_storage(State(state): State<AppState>, Path(id): Path<i32>) -> Result<(), (StatusCode, String)> {
+pub async fn withdraw_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Path(request_id): Path<i32>,
+) -> Result<(), (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers.clone(), &state).map_err(internal_error)?;
+
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
     let today = Local::now().date_naive();
     let update_result = diesel::update(storage)
-        .filter(storage_id.eq(id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(request_id))
         .set(date_out.eq(today))
         .load::<Storage>(conn)
         .map_err(internal_error)?;
     if update_result.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found, update failed")))
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Storage id not found, update failed"),
+        ));
     }
 
     Ok(())
@@ -495,20 +573,28 @@ pub async fn withdraw_storage(State(state): State<AppState>, Path(id): Path<i32>
 ///
 /// * `AvailabilityError`: already not available.
 /// * `ExpirationError`: storage item has expired.
-pub async fn re_enter_storage(State(state): State<AppState>, Path(id): Path<i32>) -> Result<(), (StatusCode, String)> {
+pub async fn re_enter_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Path(request_id): Path<i32>,
+) -> Result<(), (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers.clone(), &state).map_err(internal_error)?;
+
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
     let update_result = diesel::update(storage)
-        .filter(storage_id.eq(id))
-        .set(&UpdateStorageAvailability {
-            date_out: None,
-        })
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(request_id))
+        .set(&UpdateStorageAvailability { date_out: None })
         .load::<Storage>(conn)
         .map_err(internal_error)?;
     if update_result.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found, update failed")))
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Storage id not found, update failed"),
+        ));
     }
 
     Ok(())
@@ -523,20 +609,31 @@ pub async fn re_enter_storage(State(state): State<AppState>, Path(id): Path<i32>
 /// # Errors
 ///
 /// * `NotFound`: `storage_id` does not exist.
-pub async fn delete_storage(State(state): State<AppState>, Path(id): Path<i32>) -> Result<(), (StatusCode, String)> {
+pub async fn delete_storage(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Path(request_id): Path<i32>,
+) -> Result<(), (StatusCode, String)> {
+    let uuid = extract_headers_uuid(headers.clone(), &state).map_err(internal_error)?;
+
     use crate::schema::storage::dsl::*;
 
     let conn = &mut establish_connection(state.db_url);
 
     let id_check = storage
-        .filter(storage_id.eq(&id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(&request_id))
         .load::<Storage>(conn)
         .map_err(internal_error)?;
     if id_check.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("Storage id not found, delete failed")));
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Storage id not found, delete failed"),
+        ));
     }
     diesel::delete(storage)
-        .filter(storage_id.eq(id))
+        .filter(user_id.eq(uuid))
+        .filter(id.eq(request_id))
         .execute(conn)
         .map_err(internal_error)?;
 
@@ -563,12 +660,18 @@ mod storage_filter {
                 expires_before_date: None,
                 is_withdrawn: None,
                 min_weight: None,
-                max_weight: None
+                max_weight: None,
             };
             let result = storage_filter.parse();
 
             assert!(result.is_err(), "Expected an error");
-            assert_eq!(result.err(), Some((StatusCode::BAD_REQUEST, String::from("drawerName also requires freezerName as query parameters"))))
+            assert_eq!(
+                result.err(),
+                Some((
+                    StatusCode::BAD_REQUEST,
+                    String::from("drawerName also requires freezerName as query parameters")
+                ))
+            )
         }
 
         #[test]
@@ -585,12 +688,18 @@ mod storage_filter {
                 expires_before_date: None,
                 is_withdrawn: None,
                 min_weight: None,
-                max_weight: None
+                max_weight: None,
             };
             let result = storage_filter.parse();
 
             assert!(result.is_err(), "Expected error");
-            assert_eq!(result.err(), Some((StatusCode::BAD_REQUEST, String::from("inBefore cannot be later than expiresAfterDate"))))
+            assert_eq!(
+                result.err(),
+                Some((
+                    StatusCode::BAD_REQUEST,
+                    String::from("inBefore cannot be later than expiresAfterDate")
+                ))
+            )
         }
 
         #[test]
@@ -607,12 +716,20 @@ mod storage_filter {
                 expires_before_date: Some(yesterday),
                 is_withdrawn: None,
                 min_weight: None,
-                max_weight: None
+                max_weight: None,
             };
             let result = storage_filter.parse();
 
             assert!(result.is_err(), "Expected error");
-            assert_eq!(result.err(), Some((StatusCode::BAD_REQUEST, String::from("expiresBeforeDate canot be equal or earlier than expiresAfterDate"))))
+            assert_eq!(
+                result.err(),
+                Some((
+                    StatusCode::BAD_REQUEST,
+                    String::from(
+                        "expiresBeforeDate canot be equal or earlier than expiresAfterDate"
+                    )
+                ))
+            )
         }
         #[test]
         fn min_weight_gt_max_weight_returns_error() {
@@ -626,12 +743,18 @@ mod storage_filter {
                 expires_before_date: None,
                 is_withdrawn: None,
                 min_weight: Some(500.),
-                max_weight: Some(100.)
+                max_weight: Some(100.),
             };
             let result = storage_filter.parse();
 
             assert!(result.is_err(), "Expected error");
-            assert_eq!(result.err(), Some((StatusCode::BAD_REQUEST, String::from("minWeight must be smaller than maxWeight"))))
+            assert_eq!(
+                result.err(),
+                Some((
+                    StatusCode::BAD_REQUEST,
+                    String::from("minWeight must be smaller than maxWeight")
+                ))
+            )
         }
     }
 }
@@ -641,30 +764,38 @@ mod storage_response {
     use super::*;
 
     #[test]
-    fn from_query_result_returns_correctly() { 
+    fn from_query_result_returns_correctly() {
         let query_result = vec![(
             Storage {
-                storage_id: 1,
+                id: 1,
                 product_id: 2,
                 drawer_id: 3,
                 weight_grams: 4.0,
                 date_in: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
                 date_out: None,
+                // TODO: update to actual UUID for testing.
+                user_id: uuid::Uuid::new_v4(),
             },
             Product {
-                product_id: 2,
+                id: 2,
                 name: String::from("product name"),
-                expiration_months: 12
+                expiration_months: 12,
+                // TODO: update to actual UUID for testing.
+                user_id: uuid::Uuid::new_v4(),
             },
             Drawer {
-                drawer_id: 3,
+                id: 3,
                 name: String::from("drawer name"),
-                freezer_id: 4
+                freezer_id: 4,
+                // TODO: update to actual UUID for testing.
+                user_id: uuid::Uuid::new_v4(),
             },
             Freezer {
-                freezer_id: 5,
-                name: String::from("freezer name")
-            }
+                id: 5,
+                name: String::from("freezer name"),
+                // TODO: update to actual UUID for testing.
+                user_id: uuid::Uuid::new_v4(),
+            },
         )];
         let storage_response = StorageResponse::from_query_result(query_result);
         let expected_storage_response = StorageResponse {
@@ -686,8 +817,17 @@ mod storage_response {
         assert_eq!(stor.freezer_name, expected_storage_response.freezer_name);
         assert_eq!(stor.drawer_name, expected_storage_response.drawer_name);
         assert_eq!(stor.weight_grams, expected_storage_response.weight_grams);
-        assert_eq!(stor.in_storage_since, expected_storage_response.in_storage_since);
-        assert_eq!(stor.expiration_date, expected_storage_response.expiration_date);
-        assert_eq!(stor.out_storage_since, expected_storage_response.out_storage_since);
+        assert_eq!(
+            stor.in_storage_since,
+            expected_storage_response.in_storage_since
+        );
+        assert_eq!(
+            stor.expiration_date,
+            expected_storage_response.expiration_date
+        );
+        assert_eq!(
+            stor.out_storage_since,
+            expected_storage_response.out_storage_since
+        );
     }
 }

@@ -1,7 +1,7 @@
 //! API endpoints.
-pub mod root;
-pub mod freezers;
-pub mod drawers;
-pub mod products;
-pub mod storage;
-mod users;
+pub(crate) mod root;
+pub(crate) mod freezers;
+pub(crate) mod drawers;
+pub(crate) mod products;
+pub(crate) mod storage;
+pub(crate) mod users;

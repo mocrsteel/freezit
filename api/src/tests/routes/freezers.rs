@@ -5,9 +5,9 @@ use axum::{
 use serde_json::ser;
 use tower::{Service, ServiceExt};
 
-use crate::common::{db::Context, db_data::FREEZERS};
-use api::{
-    app,
+use crate::tests::common::{db::Context, db_data::FREEZERS};
+use crate::{
+    router::router,
     models::{Freezer, NewFreezer},
 };
 
@@ -16,7 +16,7 @@ static MOD: &str = "router_freezers";
 #[tokio::test]
 async fn creates_freezer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let new_freezer = NewFreezer {
         name: String::from("Bureau"),
@@ -70,7 +70,7 @@ async fn creates_freezer_correctly() {
 #[tokio::test]
 async fn create_returns_error_on_non_unique_name() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let existing_freezer = NewFreezer {
         name: String::from(FREEZERS[1].1),
@@ -107,7 +107,7 @@ async fn create_returns_error_on_non_unique_name() {
 #[tokio::test]
 async fn gets_correct_freezer_by_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_freezer = Freezer::from_tuple(FREEZERS[2]);
 
@@ -134,7 +134,7 @@ async fn gets_correct_freezer_by_id() {
 #[tokio::test]
 async fn gets_correct_freezer_by_name() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_freezer = Freezer::from_tuple(FREEZERS[1]);
 
@@ -169,7 +169,7 @@ async fn gets_correct_freezer_by_name() {
 #[tokio::test]
 async fn root_gets_all_freezers() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_freezer_vec = Freezer::from_vec(FREEZERS.to_vec());
 
@@ -201,7 +201,7 @@ async fn root_gets_all_freezers() {
 #[tokio::test]
 async fn updates_freezer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let nonexistent_freezer_name = "Tuinhuis";
 
@@ -263,7 +263,7 @@ async fn updates_freezer_correctly() {
 #[tokio::test]
 async fn update_returns_error_on_non_unique_name() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let existent_freezer_name = FREEZERS[2].1;
 
@@ -315,7 +315,7 @@ async fn update_returns_error_on_non_unique_name() {
 #[tokio::test]
 async fn deletes_freezer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let request = Request::builder()
         .uri("/api/freezers/1")
@@ -352,7 +352,7 @@ async fn deletes_freezer_correctly() {
 #[tokio::test]
 async fn delete_returns_error_on_nonexistent_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let response = app
         .oneshot(

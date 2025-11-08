@@ -1,3 +1,4 @@
+#![cfg(test)]
 #![allow(dead_code)]
 
 use std::sync::atomic::Ordering;
@@ -10,7 +11,7 @@ use chrono::prelude::*;
 use dotenvy::dotenv;
 use log::{debug, error, info};
 
-use api::models::{NewFreezer, NewProduct, NewStorageItem, NewDrawer, Drawer, Freezer, Product, Storage};
+use crate::models::{NewFreezer, NewProduct, NewStorageItem, NewDrawer, Drawer, Freezer, Product, Storage};
 
 use super::{DB_COUNT, db_data};
 
@@ -119,7 +120,7 @@ impl Context {
             .into_iter()
             .map(|(_id, prod_id, wt_grams, dt_in, _, draw_id)| {
                 NewStorageItem {
-                    product_id: prod_id,
+                    id: prod_id,
                     weight_grams: wt_grams,
                     date_in: NaiveDate::parse_from_str(dt_in, "%Y-%m-%d").unwrap(),
                     drawer_id: draw_id,
@@ -134,10 +135,10 @@ impl Context {
                 }
             }).collect();
 
-        use api::schema::drawers::dsl as draw;
-        use api::schema::freezers::dsl as freez;
-        use api::schema::products::dsl as prod;
-        use api::schema::storage::dsl as stor;
+        use crate::schema::drawers::dsl as draw;
+        use crate::schema::freezers::dsl as freez;
+        use crate::schema::products::dsl as prod;
+        use crate::schema::storage::dsl as stor;
 
         // let conn = &mut self.establish_connection();
         diesel::insert_into(freez::freezers)

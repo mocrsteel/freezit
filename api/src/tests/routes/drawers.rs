@@ -4,19 +4,19 @@ use axum::{
 };
 use tower::{Service, ServiceExt};
 
-use api::{
-    app,
+use crate::{
+    router::router,
     models::{Drawer, NewDrawer},
 };
-use crate::common::db::Context;
-use crate::common::db_data::{FREEZERS, DRAWERS};
+use crate::tests::common::db::Context;
+use crate::tests::common::db_data::{FREEZERS, DRAWERS};
 
 static MOD: &str = "router_drawers";
 
 #[tokio::test]
 async fn creates_drawer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let new_drawer = NewDrawer {
         name: String::from("New Drawer"),
@@ -63,9 +63,9 @@ async fn creates_drawer_correctly() {
 #[tokio::test]
 async fn returns_error_on_create_existing_name_freezer_id_combination() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
-    let Drawer {drawer_id: _, name, freezer_id } = Drawer::from_tuple(DRAWERS[10]);
+    let Drawer { id: _, name, freezer_id } = Drawer::from_tuple(DRAWERS[10]);
     let error_drawer = NewDrawer {
         name,
         freezer_id
@@ -91,9 +91,9 @@ async fn returns_error_on_create_existing_name_freezer_id_combination() {
 #[tokio::test]
 async fn creates_drawer_correctly_on_existing_name() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
-    let Drawer { drawer_id: _, name, freezer_id} = Drawer::from_tuple(DRAWERS[4]);
+    let Drawer { id: _, name, freezer_id} = Drawer::from_tuple(DRAWERS[4]);
     let new_drawer = NewDrawer {
         name,
         freezer_id: 3
@@ -101,7 +101,7 @@ async fn creates_drawer_correctly_on_existing_name() {
 
     // Check to make sure we set up the test correctly!
     let drawers = Drawer::from_vec(DRAWERS.to_vec());
-    let check_drawers = drawers.iter().filter(|Drawer {drawer_id: _, name, freezer_id}| {
+    let check_drawers = drawers.iter().filter(|Drawer { id: _, name, freezer_id}| {
         name.eq(&new_drawer.name) && freezer_id.eq(&new_drawer.freezer_id)
     }).collect::<Vec<&Drawer>>();
     assert!(check_drawers.is_empty(), "This freezer_id<->name combination is not unique!");
@@ -129,7 +129,7 @@ async fn creates_drawer_correctly_on_existing_name() {
 #[tokio::test]
 async fn gets_all_drawers_without_query_params() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_drawer_vec = Drawer::from_vec(DRAWERS.to_vec());
 
@@ -151,7 +151,7 @@ async fn gets_all_drawers_without_query_params() {
 #[tokio::test]
 async fn gets_all_drawers_on_invalid_params() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let get_response = app.oneshot(
         Request::builder()
@@ -171,13 +171,13 @@ async fn gets_all_drawers_on_invalid_params() {
 #[tokio::test]
 async fn gets_correct_drawer_by_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_drawer = Drawer::from_tuple(DRAWERS[8]);
 
     let get_response = app.oneshot(
         Request::builder()
-            .uri(format!("/api/drawers?drawerId={}", expected_drawer.drawer_id))
+            .uri(format!("/api/drawers?drawerId={}", expected_drawer.id))
             .body(Body::empty())
             .unwrap()
     ).await.unwrap() ;
@@ -194,11 +194,11 @@ async fn gets_correct_drawer_by_id() {
 #[tokio::test]
 async fn gets_correct_drawer_vec_by_name() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_drawers = Drawer::from_vec(DRAWERS.to_vec())
         .into_iter()
-        .filter(|Drawer {drawer_id: _, name, freezer_id: _}| {
+        .filter(|Drawer { id: _, name, freezer_id: _}| {
             name.eq(DRAWERS[10].1)
         })
         .collect::<Vec<Drawer>>();
@@ -221,11 +221,11 @@ async fn gets_correct_drawer_vec_by_name() {
 #[tokio::test]
 async fn gets_correct_drawers_vec_by_freezer_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_drawers = Drawer::from_vec(DRAWERS.to_vec())
         .into_iter()
-        .filter(|Drawer {drawer_id: _, name: _, freezer_id}| {
+        .filter(|Drawer { id: _, name: _, freezer_id}| {
             freezer_id.eq(&DRAWERS[3].2)
         })
         .collect::<Vec<Drawer>>();
@@ -248,7 +248,7 @@ async fn gets_correct_drawers_vec_by_freezer_id() {
 #[tokio::test]
 async fn gets_correct_drawer_by_name_freezer_id_combination() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let expected_drawers = vec![Drawer::from_tuple(DRAWERS[7])];
 
@@ -271,7 +271,7 @@ async fn gets_correct_drawer_by_name_freezer_id_combination() {
 #[tokio::test]
 async fn get_returns_error_on_invalid_query_parameter_value_type() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let get_response = app.oneshot(
         Request::builder()
@@ -286,7 +286,7 @@ async fn get_returns_error_on_invalid_query_parameter_value_type() {
 #[tokio::test]
 async fn updates_drawer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
@@ -339,7 +339,7 @@ async fn updates_drawer_correctly() {
 #[tokio::test]
 async fn update_returns_error_on_existing_name_freezer_id_combination() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
@@ -380,7 +380,7 @@ async fn update_returns_error_on_existing_name_freezer_id_combination() {
 #[tokio::test]
 async fn updates_drawer_name_correctly_on_existing_name_in_other_freezer() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let get_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
@@ -416,7 +416,7 @@ async fn updates_drawer_name_correctly_on_existing_name_in_other_freezer() {
 #[tokio::test]
 async fn deletes_drawer_correctly() {
     let ctx = Context::new(MOD);
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let delete_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await
@@ -456,7 +456,7 @@ async fn deletes_drawer_correctly() {
 #[tokio::test]
 async fn delete_returns_error_on_nonexistent_drawer_id() {
     let ctx = Context::new(MOD);
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let delete_response = app.oneshot(
         Request::builder()

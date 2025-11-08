@@ -1,6 +1,6 @@
 //! Contains core modules used by the API for its functionality.
 
-pub mod connection;
-pub mod error;
-pub mod query;
-mod jwt;
+pub(crate) mod connection;
+pub(crate) mod error;
+pub(crate) mod query;
+pub(crate) mod auth;

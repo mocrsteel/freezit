@@ -1,8 +1,6 @@
 extern crate diesel_migrations;
 
-mod common;
-
-use common::db::Context;
+use crate::tests::common::db::Context;
 
 use diesel::prelude::*;
 use log::{info, warn};

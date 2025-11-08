@@ -70,6 +70,12 @@ pub fn establish_connection(db_uri: Option<String>) -> PgConnection {
 mod uri_parsing {
     use super::*;
     use std::env;
+
+    #[test]
+    fn check_database_connectivity() {
+        let _connection = establish_connection(None);
+    }
+
     #[test]
     #[should_panic(expected = "DATABASE_URL must be set")]
     fn database_url_not_set() {

@@ -5,12 +5,12 @@ use axum::{
 use chrono::{Local, Months};
 use tower::{Service, ServiceExt};
 
-use api::{
-    app, models::{Drawer, Freezer, NewStorageItem, Product, Storage}, routes::storage::StorageResponse,
+use crate::{
+    router::router, models::{Drawer, Freezer, NewStorageItem, Product, Storage}, routes::storage::StorageResponse,
 };
 
-use crate::common::db::Context;
-use crate::common::db_data::{DRAWERS, FREEZERS, PRODUCTS, STORAGE};
+use crate::tests::common::db::Context;
+use crate::tests::common::db_data::{DRAWERS, FREEZERS, PRODUCTS, STORAGE};
 
 
 fn storage_response_from_storage_item(storage: Storage) -> Vec<StorageResponse> {
@@ -20,7 +20,7 @@ fn storage_response_from_storage_item(storage: Storage) -> Vec<StorageResponse> 
         .collect::<Vec<Product>>()[0];
     let drawer = &Drawer::from_vec(DRAWERS.to_vec())
         .into_iter()
-        .filter(|drawer| drawer.drawer_id.eq(&storage.drawer_id))
+        .filter(|drawer| drawer.id.eq(&storage.drawer_id))
         .collect::<Vec<Drawer>>()[0];
     let freezer = &Freezer::from_vec(FREEZERS.to_vec())
         .into_iter()
@@ -67,14 +67,14 @@ impl Mod {
 #[tokio::test]
 async fn get_storage_by_id_returns_correct_item() {
     let ctx = Context::new(Mod::Get.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let storage_item = Storage::from_tuple(STORAGE[20]);
     let expected_response = storage_response_from_storage_item(storage_item.clone());
     let storage_response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/storage/{}", storage_item.storage_id))
+                .uri(format!("/api/storage/{}", storage_item.id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -93,7 +93,7 @@ async fn get_storage_by_id_returns_correct_item() {
 #[tokio::test]
 async fn get_storage_by_id_returns_error_when_not_found() {
     let ctx = Context::new(Mod::Get.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let response = app
         .oneshot(
@@ -118,7 +118,7 @@ async fn get_storage_by_id_returns_error_when_not_found() {
 #[tokio::test]
 async fn creates_storage_correctly() {
     let ctx = Context::new(Mod::Create.as_str());
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let product = Product::from_tuple(PRODUCTS[4]);
     let drawer = Drawer::from_tuple(DRAWERS[10]);
@@ -128,7 +128,7 @@ async fn creates_storage_correctly() {
         .collect::<Vec<Freezer>>()[0];
 
     let new_storage =
-        NewStorageItem::from(product.product_id, drawer.drawer_id, 325.5, Local::now().date_naive());
+        NewStorageItem::from(product.product_id, drawer.id, 325.5, Local::now().date_naive());
 
     let create_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
@@ -190,7 +190,7 @@ async fn creates_storage_correctly() {
 #[tokio::test]
 async fn get_storage_root_returns_all_storage() {
     let ctx = Context::new(Mod::Get.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let storage_available = Storage::from_vec(STORAGE.to_vec())
         .into_iter()
@@ -241,7 +241,7 @@ async fn get_storage_root_returns_all_storage() {
 #[tokio::test]
 async fn updates_storage_correctly() {
     let ctx = Context::new(Mod::Update.as_str());
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let query_result = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
@@ -295,7 +295,7 @@ async fn updates_storage_correctly() {
 #[tokio::test]
 async fn update_storage_returns_error_when_not_found() {
     let ctx = Context::new(Mod::Update.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let storage = Storage::from_tuple(STORAGE[15]);
     let mut storage_response = storage_response_from_storage_item(storage)[0].clone();
@@ -322,7 +322,7 @@ async fn update_storage_returns_error_when_not_found() {
 #[tokio::test]
 async fn withdraw_updates_storage_correctly() {
     let ctx = Context::new(Mod::Withdraw.as_str());
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let withdraw_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
@@ -367,7 +367,7 @@ async fn withdraw_updates_storage_correctly() {
 #[tokio::test]
 async fn withdraw_storage_returns_error_when_not_found() {
     let ctx = Context::new(Mod::Withdraw.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let withdraw_response = app.oneshot(
         Request::builder()
@@ -390,7 +390,7 @@ async fn withdraw_storage_returns_error_when_not_found() {
 #[tokio::test]
 async fn re_enter_updates_storage_correctly() {
     let ctx = Context::new(Mod::Withdraw.as_str());
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let withdraw_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
@@ -424,7 +424,7 @@ async fn re_enter_updates_storage_correctly() {
 #[tokio::test]
 async fn re_enter_storage_returns_error_when_not_found() {
     let ctx = Context::new(Mod::Update.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let re_enter_response = app.oneshot(
         Request::builder()
@@ -447,7 +447,7 @@ async fn re_enter_storage_returns_error_when_not_found() {
 #[tokio::test]
 async fn delete_storage_works_correctly() {
     let ctx = Context::new(Mod::Delete.as_str());
-    let mut app = app(Some(ctx.database_url())).await;
+    let mut app = router(Some(ctx.database_url())).await;
 
     let delete_response = ServiceExt::<Request<axum::body::Body>>::ready(&mut app)
         .await.unwrap()
@@ -484,7 +484,7 @@ async fn delete_storage_works_correctly() {
 #[tokio::test]
 async fn delete_storage_returns_error_when_not_found() {
     let ctx = Context::new(Mod::Delete.as_str());
-    let app = app(Some(ctx.database_url())).await;
+    let app = router(Some(ctx.database_url())).await;
 
     let delete_response = app.oneshot(
         Request::builder()
@@ -505,7 +505,7 @@ mod storage_filters {
     #[tokio::test]
     async fn only_drawer_name_returns_bad_request() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let response = app.oneshot(
             Request::builder()
@@ -525,7 +525,7 @@ mod storage_filters {
     #[tokio::test]
     async fn products_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let product = Product::from_tuple(PRODUCTS[3]);
         let expected_storage_vec = storage_response_from_storage_vec(
@@ -554,7 +554,7 @@ mod storage_filters {
     #[tokio::test]
     async fn drawer_freezer_name_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let drawer = Drawer::from_tuple(DRAWERS[10]);
         let freezer = &Freezer::from_vec(FREEZERS.to_vec()).into_iter().filter(|freezer| {
@@ -586,7 +586,7 @@ mod storage_filters {
     #[tokio::test]
     async fn freezer_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let freezer = Freezer::from_tuple(FREEZERS[0]);
         let expected_storage_vec = storage_response_from_storage_vec(
@@ -616,7 +616,7 @@ mod storage_filters {
     #[tokio::test]
     async fn in_before_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let ref_storage = Storage::from_tuple(STORAGE[24]);
         let expected_storage_vec = storage_response_from_storage_vec(
@@ -643,7 +643,7 @@ mod storage_filters {
     #[tokio::test]
     async fn expires_after_date_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         // Sample storage based expiration date to make checking the result easier.
         let ref_storage = Storage::from_tuple(STORAGE[0]);
@@ -678,7 +678,7 @@ mod storage_filters {
     #[tokio::test]
     async fn expires_before_date_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         // Sample storage based expiration date to make checking the result easier.
         let ref_storage = Storage::from_tuple(STORAGE[10]);
@@ -721,7 +721,7 @@ mod storage_filters {
     #[tokio::test]
     async fn is_withdrawn_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let expected_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
@@ -747,7 +747,7 @@ mod storage_filters {
     #[tokio::test]
     async fn min_weight_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let expected_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
@@ -773,7 +773,7 @@ mod storage_filters {
     #[tokio::test]
     async fn max_weight_returns_correct_vec() {
         let ctx = Context::new(Mod::Filter.as_str());
-        let app = app(Some(ctx.database_url())).await;
+        let app = router(Some(ctx.database_url())).await;
 
         let expected_vec = storage_response_from_storage_vec(
             Storage::from_vec(STORAGE.to_vec()).into_iter().filter(| storage | {
