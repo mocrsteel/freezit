@@ -56,6 +56,7 @@ diesel::table! {
         name -> Varchar,
         #[max_length = 200]
         email -> Varchar,
+        permissions -> Int4,
     }
 }
 

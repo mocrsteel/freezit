@@ -5,10 +5,11 @@ use axum::{
 use serde_json::ser;
 use tower::{Service, ServiceExt};
 
-use crate::tests::common::{db::Context, db_data::FREEZERS};
+use crate::tests::common::db::Context;
 use crate::{
     router::router,
     models::{Freezer, NewFreezer},
+    mock_data::FREEZERS,
 };
 
 static MOD: &str = "router_freezers";

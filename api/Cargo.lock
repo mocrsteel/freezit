@@ -96,6 +96,7 @@ name = "api"
 version = "0.1.0-alpha"
 dependencies = [
  "axum",
+ "bitflags",
  "chrono",
  "colored",
  "diesel",

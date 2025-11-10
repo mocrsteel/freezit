@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users
 (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
-    email VARCHAR(200) UNIQUE NOT NULL
+    email VARCHAR(200) UNIQUE NOT NULL,
+    permissions INTEGER NOT NULL default 0
 );
 
 CREATE TABLE IF NOT EXISTS freezers

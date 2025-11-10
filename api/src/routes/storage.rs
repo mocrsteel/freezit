@@ -765,6 +765,8 @@ mod storage_response {
 
     #[test]
     fn from_query_result_returns_correctly() {
+        // TODO: update to actual UUID for testing.
+        let user_id = uuid::Uuid::new_v4();
         let query_result = vec![(
             Storage {
                 id: 1,
@@ -773,28 +775,24 @@ mod storage_response {
                 weight_grams: 4.0,
                 date_in: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
                 date_out: None,
-                // TODO: update to actual UUID for testing.
-                user_id: uuid::Uuid::new_v4(),
+                user_id,
             },
             Product {
                 id: 2,
                 name: String::from("product name"),
                 expiration_months: 12,
-                // TODO: update to actual UUID for testing.
-                user_id: uuid::Uuid::new_v4(),
+                user_id,
             },
             Drawer {
                 id: 3,
                 name: String::from("drawer name"),
                 freezer_id: 4,
-                // TODO: update to actual UUID for testing.
-                user_id: uuid::Uuid::new_v4(),
+                user_id,
             },
             Freezer {
                 id: 5,
                 name: String::from("freezer name"),
-                // TODO: update to actual UUID for testing.
-                user_id: uuid::Uuid::new_v4(),
+                user_id,
             },
         )];
         let storage_response = StorageResponse::from_query_result(query_result);

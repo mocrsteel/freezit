@@ -36,6 +36,8 @@ pub struct User {
     pub name: String,
     /// User's email address.
     pub email: String,
+    /// User permissions as set by [bitflags]
+    pub permissions: i32,
 }
 impl User {
     /// **Testing purposes only** Generate an User instance from a tuple.

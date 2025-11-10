@@ -10,10 +10,10 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use chrono::prelude::*;
 use dotenvy::dotenv;
 use log::{debug, error, info};
-
+use uuid::Uuid;
 use crate::models::{NewFreezer, NewProduct, NewStorageItem, NewDrawer, Drawer, Freezer, Product, Storage};
-
-use super::{DB_COUNT, db_data};
+use crate::mock_data as db_data;
+use super::DB_COUNT;
 
 static LOG_TARGET: &str = "integration_tests > Context";
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
@@ -83,66 +83,72 @@ impl Context {
 
         Self { base_url, db_name }
     }
+
     pub fn establish_connection(&mut self) -> PgConnection {
         PgConnection::establish(format!("{}/{}?connect_timeout=5", self.base_url, self.db_name).as_str())
             .unwrap_or_else(|_| panic!("Could not connect to database {}", self.db_name))
     }
+
     pub fn database_url(&self) -> String {
         format!("{}/{}?connect_timeout=5", self.base_url, self.db_name)
     }
 
-    fn feed_database(conn: &mut PgConnection, db_name: &str) {
+    pub fn feed_database(conn: &mut PgConnection, db_name: &str) {
         // Data preparation prior to feeding it to the context database.
         let freezers_feed: Vec<NewFreezer> = db_data::FREEZERS
             .into_iter()
-            .map(|(_id, name)| {
+            .map(|(_id, name, user_id)| {
                 NewFreezer {
                     name: String::from(name),
+                    user_id: Uuid::parse_str(&user_id).unwrap(),
                 }
             }).collect();
         let drawers_feed: Vec<NewDrawer> = db_data::DRAWERS
             .into_iter()
-            .map(|(_id, name, freezer_id)| {
+            .map(|(_id, name, freezer_id, used_id)| {
                 NewDrawer {
                     name: String::from(name),
                     freezer_id,
+                    user_id: Uuid::parse_str(&used_id).unwrap(),
                 }
             }).collect();
         let product_feed: Vec<NewProduct> = db_data::PRODUCTS
             .into_iter()
-            .map(|(_id, name, expiration_months)| {
+            .map(|(_id, name, expiration_months, user_id)| {
                 NewProduct {
                     name: String::from(name),
                     expiration_months: Some(expiration_months),
+                    user_id: Uuid::parse_str(&user_id).unwrap(),
                 }
             }).collect();
         let storage_feed: Vec<NewStorageItem> = db_data::STORAGE
             .into_iter()
-            .map(|(_id, prod_id, wt_grams, dt_in, _, draw_id)| {
+            .map(|(_id, product_id, weight_grams, date_in, _, drawer_id, user_id)| {
                 NewStorageItem {
-                    id: prod_id,
-                    weight_grams: wt_grams,
-                    date_in: NaiveDate::parse_from_str(dt_in, "%Y-%m-%d").unwrap(),
-                    drawer_id: draw_id,
+                    product_id,
+                    weight_grams,
+                    date_in: NaiveDate::parse_from_str(date_in, "%Y-%m-%d").unwrap(),
+                    drawer_id,
+                    user_id: Uuid::parse_str(&user_id).unwrap(),
                 }
             }).collect();
         let storage_withdrawn: Vec<(i32, &str)> = db_data::STORAGE
             .into_iter()
-            .filter_map(|(id, _prod_id, _wt_grams, _dt_in, dt_out, _draw_id)| {
+            .filter_map(|(id, _prod_id, _wt_grams, _dt_in, dt_out, _draw_id, _user_id)| {
                 match dt_out {
                     "" => None,
                     _ => Some((id, dt_out)),
                 }
             }).collect();
 
-        use crate::schema::drawers::dsl as draw;
-        use crate::schema::freezers::dsl as freez;
-        use crate::schema::products::dsl as prod;
-        use crate::schema::storage::dsl as stor;
+        use crate::schema::drawers::dsl as drawer_dsl;
+        use crate::schema::freezers::dsl as freezer_dsl;
+        use crate::schema::products::dsl as product_dsl;
+        use crate::schema::storage::dsl as storage_dsl;
 
         // let conn = &mut self.establish_connection();
-        diesel::insert_into(freez::freezers)
-            .values(freezers_feed)
+        diesel::insert_into(freezer_dsl::freezers)
+            .values(&freezers_feed)
             .returning(Freezer::as_returning())
             .get_result(conn)
             .unwrap_or_else(|err| {
@@ -150,8 +156,8 @@ impl Context {
                 panic!("Error loading freezers into database {}", db_name)
             });
 
-        diesel::insert_into(draw::drawers)
-            .values(drawers_feed)
+        diesel::insert_into(drawer_dsl::drawers)
+            .values(&drawers_feed)
             .returning(Drawer::as_returning())
             .get_result(conn)
             .unwrap_or_else(|err| {
@@ -159,8 +165,8 @@ impl Context {
                 panic!("Error loading drawers into database {}", db_name)
             });
 
-        diesel::insert_into(prod::products)
-            .values(product_feed)
+        diesel::insert_into(product_dsl::products)
+            .values(&product_feed)
             .returning(Product::as_returning())
             .get_results(conn)
             .unwrap_or_else(|err| {
@@ -168,8 +174,8 @@ impl Context {
                 panic!("Error loading products into database {}", db_name)
             });
 
-        diesel::insert_into(stor::storage)
-            .values(storage_feed)
+        diesel::insert_into(storage_dsl::storage)
+            .values(&storage_feed)
             .returning(Storage::as_returning())
             .get_results(conn)
             .unwrap_or_else(|err| {
@@ -177,14 +183,14 @@ impl Context {
                 panic!("Error loading storage items into database {}", db_name)
             });
 
-        for (id, dt_out) in storage_withdrawn {
+        for (data_id, dt_out) in storage_withdrawn {
             let dt_out_naive = NaiveDate::parse_from_str(dt_out, "%Y-%m-%d").unwrap();
-            diesel::update(stor::storage)
-                .filter(stor::storage_id.eq(id))
-                .set(stor::date_out.eq(dt_out_naive))
+            diesel::update(storage_dsl::storage)
+                .filter(storage_dsl::id.eq(data_id))
+                .set(storage_dsl::date_out.eq(dt_out_naive))
                 .execute(conn)
                 .unwrap_or_else(|err| {
-                    panic!("Error updating date out for storage item {} to {}: {}", id, dt_out, err);
+                    panic!("Error updating date out for storage item {} to {}: {}", data_id, dt_out, err);
                 });
         }
     }

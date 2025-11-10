@@ -26,6 +26,7 @@ seed = []
 
 [dependencies]
 axum = { version = "0.8.6", features = ["tower-log", "tracing", "tokio", "macros"] }
+bitflags = "2.10.0"
 chrono = { version = "0.4.42", features=["serde"] }
 colored = "3.0.0"
 diesel = { version = "2.3.3", features = ["postgres", "chrono", "uuid"] }

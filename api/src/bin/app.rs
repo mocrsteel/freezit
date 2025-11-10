@@ -6,7 +6,7 @@ use api::app;
 #[tokio::main]
 async fn main() {
     app().await;
-    // Code references for database interactions with Diesel, delete later.
+    // TODO: Code references for database interactions with Diesel, delete later.
 
     // use api::schema::products::dsl::*;
     //
