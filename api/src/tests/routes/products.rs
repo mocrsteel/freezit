@@ -1,6 +1,6 @@
 use crate::models::{NewProduct, Product, ProductTuple};
 use crate::router::router;
-use crate::tests::common::db_data::PRODUCTS;
+use crate::mock_data::PRODUCTS;
 use crate::tests::common::db::Context;
 
 use log::{info};

@@ -19,6 +19,7 @@
 # cargo / Rust
 **/target/
 **/.env
+**/client_secret*
 
 # IDE
 **/.idea/

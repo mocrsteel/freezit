@@ -16,6 +16,7 @@ static MOD: &str = "router_freezers";
 
 #[tokio::test]
 async fn creates_freezer_correctly() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let mut app = router(Some(ctx.database_url())).await;
 
@@ -70,6 +71,7 @@ async fn creates_freezer_correctly() {
 
 #[tokio::test]
 async fn create_returns_error_on_non_unique_name() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -107,6 +109,7 @@ async fn create_returns_error_on_non_unique_name() {
 
 #[tokio::test]
 async fn gets_correct_freezer_by_id() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -134,6 +137,7 @@ async fn gets_correct_freezer_by_id() {
 
 #[tokio::test]
 async fn gets_correct_freezer_by_name() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -169,6 +173,7 @@ async fn gets_correct_freezer_by_name() {
 
 #[tokio::test]
 async fn root_gets_all_freezers() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -201,6 +206,7 @@ async fn root_gets_all_freezers() {
 
 #[tokio::test]
 async fn updates_freezer_correctly() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let mut app = router(Some(ctx.database_url())).await;
 
@@ -263,6 +269,7 @@ async fn updates_freezer_correctly() {
 
 #[tokio::test]
 async fn update_returns_error_on_non_unique_name() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let mut app = router(Some(ctx.database_url())).await;
 
@@ -315,6 +322,7 @@ async fn update_returns_error_on_non_unique_name() {
 
 #[tokio::test]
 async fn deletes_freezer_correctly() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let mut app = router(Some(ctx.database_url())).await;
 

@@ -29,7 +29,7 @@ pub fn seed() {
     println!("Seeding database with dunmmy data...");
     let users = User::from_vec(mock_data::USERS.to_vec())
         .into_iter()
-        .map(|User { id, name, email }| SeedUser { id, email, name })
+        .map(|User { id, name, email, permissions}| SeedUser { id, email, name })
         .collect::<Vec<SeedUser>>();
 
     let email_whitelist = users

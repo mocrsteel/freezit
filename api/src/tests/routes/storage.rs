@@ -10,7 +10,7 @@ use crate::{
 };
 
 use crate::tests::common::db::Context;
-use crate::tests::common::db_data::{DRAWERS, FREEZERS, PRODUCTS, STORAGE};
+use crate::mock_data::{DRAWERS, FREEZERS, PRODUCTS, STORAGE};
 
 
 fn storage_response_from_storage_item(storage: Storage) -> Vec<StorageResponse> {

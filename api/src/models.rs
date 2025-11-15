@@ -42,23 +42,25 @@ pub struct User {
 impl User {
     /// **Testing purposes only** Generate an User instance from a tuple.
     #[cfg(test)]
-    pub fn from_tuple(user: (Uuid, &str, &str)) -> User {
-        let (id, name, email) = user;
+    pub fn from_tuple(user: (Uuid, &str, &str, i32)) -> User {
+        let (id, name, email, permissions) = user;
         User {
             id,
             name: name.into(),
             email: email.into(),
+            permissions,
         }
     }
 
     /// **Testing purposes only** Generate a `Vec` of `User` for testing.
     #[cfg(any(test, feature = "seed"))]
-    pub fn from_vec(user: Vec<(Uuid, &str, &str)>) -> Vec<User> {
+    pub fn from_vec(user: Vec<(Uuid, &str, &str, i32)>) -> Vec<User> {
         user.into_iter()
-            .map(|(id, name, email)| User {
+            .map(|(id, name, email, permissions)| User {
                 id,
                 name: name.into(),
                 email: email.into(),
+                permissions,
             })
             .collect()
     }

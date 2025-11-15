@@ -9,7 +9,7 @@ use crate::{
     models::{Drawer, NewDrawer},
 };
 use crate::tests::common::db::Context;
-use crate::tests::common::db_data::{FREEZERS, DRAWERS};
+use crate::mock_data::{FREEZERS, DRAWERS};
 
 static MOD: &str = "router_drawers";
 
@@ -90,6 +90,7 @@ async fn returns_error_on_create_existing_name_freezer_id_combination() {
 
 #[tokio::test]
 async fn creates_drawer_correctly_on_existing_name() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -170,6 +171,7 @@ async fn gets_all_drawers_on_invalid_params() {
 
 #[tokio::test]
 async fn gets_correct_drawer_by_id() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -193,6 +195,7 @@ async fn gets_correct_drawer_by_id() {
 
 #[tokio::test]
 async fn gets_correct_drawer_vec_by_name() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -220,6 +223,7 @@ async fn gets_correct_drawer_vec_by_name() {
 
 #[tokio::test]
 async fn gets_correct_drawers_vec_by_freezer_id() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 
@@ -247,6 +251,7 @@ async fn gets_correct_drawers_vec_by_freezer_id() {
 
 #[tokio::test]
 async fn gets_correct_drawer_by_name_freezer_id_combination() {
+    todo!("Correct tests");
     let ctx = Context::new(MOD);
     let app = router(Some(ctx.database_url())).await;
 

@@ -66,10 +66,10 @@ pub static FREEZERS: [(i32, &str, &str); 6] = [
 use uuid::uuid;
 
 /// Data for the [User](crate::models::User) model.
-pub static USERS: [(uuid::Uuid, &str, &str); 5] = [
-    (uuid!("d7a3b84f-7a61-4c6e-b6dc-23b47b87d3d1"), "Alice Johnson", "alice@example.com"),
-    (uuid!("4f1bca35-65d9-4cc4-8a62-9621cf3b8ff4"), "Bob Smith", "bob@example.com"),
-    (uuid!("64d57bc8-bbf5-47df-bfa9-91b70a9395c4"), "Charlie Evans", "charlie@example.com"),
-    (uuid!("ae84fba1-f95a-4df4-bf5d-41a1b176b331"), "Diana Cooper", "diana@example.com"),
-    (uuid!("cb39ad25-d6f3-4f9c-80ea-5d2eb71b0d82"), "Ethan Brown", "ethan@example.com"),
+pub static USERS: [(uuid::Uuid, &str, &str, i32); 5] = [
+    (uuid!("d7a3b84f-7a61-4c6e-b6dc-23b47b87d3d1"), "Alice Johnson", "alice@example.com", 0),
+    (uuid!("4f1bca35-65d9-4cc4-8a62-9621cf3b8ff4"), "Bob Smith", "bob@example.com", 0),
+    (uuid!("64d57bc8-bbf5-47df-bfa9-91b70a9395c4"), "Charlie Evans", "charlie@example.com", 0),
+    (uuid!("ae84fba1-f95a-4df4-bf5d-41a1b176b331"), "Diana Cooper", "diana@example.com", 0),
+    (uuid!("cb39ad25-d6f3-4f9c-80ea-5d2eb71b0d82"), "Ethan Brown", "ethan@example.com", 0),
 ];

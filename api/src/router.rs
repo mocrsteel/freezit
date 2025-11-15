@@ -10,6 +10,7 @@ use axum::{
     http::{HeaderMap, Request},
     Router,
 };
+use axum::response::Redirect;
 use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::{
     timeout::TimeoutLayer,
@@ -79,6 +80,7 @@ pub async fn router(db_url: Option<String>) -> Router {
     Router::new()
         .nest("/api", api_subroutes)
         .with_state(state)
+        .route("/", get(|| async { Redirect::permanent("/api") }))
         .layer(TimeoutLayer::new(Duration::from_secs(15)))
         .layer(
             TraceLayer::new_for_http()

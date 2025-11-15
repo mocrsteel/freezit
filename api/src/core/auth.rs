@@ -2,9 +2,10 @@
 //! Encoding functions are included, but for testing purposes only, hence their 'private' status.
 
 use dotenvy::dotenv;
-use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::fs;
 use uuid::Uuid;
 
 #[cfg(test)]
@@ -27,7 +28,7 @@ pub struct PublicClaimData {
 }
 
 /// Expected JWT TokenData claims from the frontend.
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Claims {
     /// Authenticated user's UUID (unique user ID, not just a sequential number).
     uuid: Uuid,
@@ -59,7 +60,7 @@ impl Claims {
     pub fn new(uuid: Option<Uuid>, name: String, email: String, exp: usize) -> Self {
         let now = SystemTime::now();
         let exp = now.duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + exp;
-        let uuid = uuid.unwrap_or_else(|| Uuid::new_v4());
+        let uuid = uuid.unwrap_or_else(Uuid::new_v4);
 
         Claims {
             uuid,
@@ -102,6 +103,7 @@ impl Claims {
 /// `encoding_key` is only generated in test mode under `#[cfg(test)]` since we don't wan to generate tokens in the backend.
 #[derive(Clone)]
 pub struct JWT {
+    algorithm: Algorithm,
     decoding_key: DecodingKey,
     #[cfg(test)]
     encoding_key: EncodingKey,
@@ -126,6 +128,27 @@ impl JWT {
         let encoding_key = EncodingKey::from_secret(secret.as_bytes());
 
         JWT {
+            // For Secret based signing, we use ES256.
+            algorithm: Algorithm::ES256,
+            decoding_key,
+            #[cfg(test)]
+            encoding_key,
+        }
+    }
+
+    fn new_from_pem(f: String) -> Self {
+        let public_key = std::fs::read_to_string(f.clone() + ".pub").expect(&format!("Unable to read public key {}", f.clone() + ".pub"));
+        #[cfg(test)]
+        let private_key = std::fs::read_to_string(&f).expect(&format!("Unable to read public key {}", f.clone()));
+        #[cfg(test)]
+        dbg!(&private_key);
+
+        let decoding_key = DecodingKey::from_rsa_pem(public_key.as_bytes()).unwrap();
+        #[cfg(test)]
+        let encoding_key = EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
+
+        JWT {
+            algorithm: Algorithm::RS256,
             decoding_key,
             #[cfg(test)]
             encoding_key,
@@ -142,13 +165,13 @@ impl JWT {
     /// Once more reliable, a public and private key system should be set up? Unsure if this is
     /// beneficial if the frontend uses AuthJS.
     pub fn decode(&self, token: String) -> Result<TokenData<Claims>, jsonwebtoken::errors::Error> {
-        decode(&token, &self.decoding_key, &Validation::default())
+        decode(&token, &self.decoding_key, &Validation::new(self.algorithm))
     }
 
     /// Encoding a claim into a json web token. For testing purposes.
     #[cfg(test)]
     pub fn encode(&self, claims: Claims) -> Result<String, jsonwebtoken::errors::Error> {
-        encode(&Header::default(), &claims, &self.encoding_key)
+        encode(&Header::new(self.algorithm), &claims, &self.encoding_key)
     }
 }
 
@@ -167,4 +190,32 @@ pub fn extract_headers_uuid(headers: axum::http::HeaderMap, state: &AppState) ->
     Ok(token_data.claims.uuid())
 }
 
-// TODO: write tests.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod rsa_pem {
+        use super::*;
+        #[test]
+        fn can_create_jwt() {
+            let jwt = JWT::new_from_pem(String::from("./dev.pem"));
+        }
+
+        #[test]
+        fn can_encode_jwt() {
+            let jwt = JWT::new_from_pem(String::from("./dev.pem"));
+            let claims = Claims::new(None, String::from("name"), String::from("email"), 15);
+            let encoded_claims = jwt.encode(claims).unwrap();
+        }
+
+        #[test]
+        fn can_decode_jwt() {
+            let jwt = JWT::new_from_pem(String::from("./dev.pem"));
+            let claims = Claims::new(Some(Uuid::new_v4()), String::from("name"), String::from("email"), 15);
+            let token = jwt.encode(claims.clone()).unwrap();
+            let token_data = jwt.decode(token).unwrap();
+
+            assert_eq!(claims, token_data.claims);
+        }
+    }
+}
